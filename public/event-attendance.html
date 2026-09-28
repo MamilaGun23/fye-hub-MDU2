@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a2a6c">
+  <title>Event Attendance | FYE Hub</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="event-attendance.js" defer></script>
+</head>
+<body class="attendance-page">
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="FYE Hub home">
+      <span class="brand-mark" aria-hidden="true">✿</span>
+      <span>FYE <b>HUB</b></span>
+    </a>
+    <span class="university">University of Mpumalanga</span>
+  </header>
+  <main class="attendance-main">
+    <section class="content-panel attendance-panel" aria-labelledby="attendance-title">
+      <p class="section-kicker">FYE EVENT</p>
+      <h1 id="attendance-title">Loading event…</h1>
+      <p class="summary-text" id="attendance-details"></p>
+      <p class="form-feedback" id="attendance-feedback" role="status" aria-live="polite"></p>
+      <button class="form-action" id="attendance-submit" type="button" disabled>Mark my attendance</button>
+      <a class="attendance-home" href="index.html">Return to FYE Hub</a>
+    </section>
+  </main>
+</body>
+</html>

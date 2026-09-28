@@ -229,6 +229,7 @@ loadAssignedMentor();
 async function loadStudentStudyDetails() {
   const facultyDisplay = document.querySelector('#student-faculty');
   const programmeDisplay = document.querySelector('#student-programme');
+  const greetingDisplay = document.querySelector('#student-greeting-name');
   if (!facultyDisplay || !programmeDisplay) return;
   if (!window.fyeSupabase) {
     facultyDisplay.textContent = 'Could not connect to the database.';
@@ -242,12 +243,13 @@ async function loadStudentStudyDetails() {
   if (authError || !authData.user) {
     facultyDisplay.textContent = 'Please sign in again.';
     programmeDisplay.textContent = 'Please sign in again.';
+    if (greetingDisplay) greetingDisplay.textContent = 'Student';
     return;
   }
 
   const { data: profile, error: profileError } = await window.fyeSupabase
     .from('profiles')
-    .select('faculty_id, programme_id')
+    .select('full_name, faculty_id, programme_id')
     .eq('id', authData.user.id)
     .maybeSingle();
 
@@ -255,7 +257,26 @@ async function loadStudentStudyDetails() {
     facultyDisplay.textContent = 'Profile details could not be loaded.';
     programmeDisplay.textContent = 'Profile details could not be loaded.';
     console.error('Could not load student profile:', profileError);
+    if (greetingDisplay) greetingDisplay.textContent = 'Student';
     return;
+  }
+
+  const displayName = profile.full_name?.trim()
+    || authData.user.user_metadata?.full_name?.trim()
+    || authData.user.email?.split('@')[0]
+    || 'Student';
+  const firstName = displayName.split(/\s+/)[0];
+  const profileName = document.querySelector('#student-profile-name');
+  const avatar = document.querySelector('#student-avatar');
+  if (greetingDisplay) greetingDisplay.textContent = firstName;
+  if (profileName) profileName.textContent = displayName;
+  if (avatar) {
+    avatar.textContent = displayName
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join('')
+      .toUpperCase();
   }
 
   if (!profile.faculty_id || !profile.programme_id) {

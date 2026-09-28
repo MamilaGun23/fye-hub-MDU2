@@ -62,9 +62,14 @@
               <label for="calendar-event-title">Event title</label>
               <input id="calendar-event-title" type="text" maxlength="120"
                 placeholder="For example, Database Test 2" required>
-              <label for="calendar-event-description">Event objective</label>
+              <label for="calendar-event-description">Purpose</label>
               <textarea id="calendar-event-description" rows="3" maxlength="500"
-                placeholder="Write a short description of the event" required></textarea>
+                placeholder="What should attendees learn or achieve?" required></textarea>
+              <label for="calendar-event-time">Time</label>
+              <input id="calendar-event-time" type="time" required>
+              <label for="calendar-event-venue">Venue</label>
+              <input id="calendar-event-venue" type="text" maxlength="200"
+                placeholder="Lecture Hall A" required>
               <button class="form-action" type="submit">Save event</button>
             </form>
             <p id="calendar-feedback" class="form-feedback" role="status" aria-live="polite"></p>
@@ -106,6 +111,7 @@
       #calendar-event-form{margin-top:16px}
       #calendar-event-form[hidden],#calendar-add-event[hidden]{display:none!important}
       #calendar-event-form textarea{box-sizing:border-box;width:100%;resize:vertical}
+      #calendar-event-form input,#calendar-event-form textarea{grid-column:1/-1}
       @media(max-width:520px){.fye-calendar-weekdays,.fye-calendar-days{gap:4px}.fye-calendar-date,.fye-calendar-empty{min-height:38px}}
     `;
     document.head.appendChild(style);
@@ -166,7 +172,11 @@
       const description = document.createElement('p');
       description.className = 'summary-text';
       description.textContent = item.description || '';
-      card.append(type, title, description);
+      const details = document.createElement('p');
+      details.className = 'summary-text';
+      const startsAt = new Date(item.starts_at);
+      details.textContent = `${startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${item.location ? ` · ${item.location}` : ''}`;
+      card.append(type, title, details, description);
       eventList.appendChild(card);
     }
   }
@@ -175,6 +185,9 @@
     selectedDate = date;
     selectedDateLabel.textContent = displayDate(date);
     addEventButton.hidden = !['supervisor', 'mentor'].includes(role);
+    addEventButton.textContent = role === 'mentor'
+      ? 'Request event approval'
+      : 'Add event';
     eventForm.hidden = true;
     eventForm.reset();
     feedback.textContent = '';
@@ -244,6 +257,8 @@
     renderDayEvents();
   }
 
+  window.addEventListener('fye:calendar-refresh', loadMonthEvents);
+
   document.querySelector('#calendar-previous').addEventListener('click', async () => {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
     selectedDate = null;
@@ -284,37 +299,56 @@
 
     const title = document.querySelector('#calendar-event-title').value.trim();
     const description = document.querySelector('#calendar-event-description').value.trim();
+    const eventTime = document.querySelector('#calendar-event-time').value;
+    const venue = document.querySelector('#calendar-event-venue').value.trim();
     const saveButton = eventForm.querySelector('button[type="submit"]');
     const mentorEvent = role === 'mentor';
+    const [hours, minutes] = eventTime.split(':').map(Number);
     const startsAt = new Date(
-      selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), 12, 0, 0
+      selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes, 0
     );
 
     saveButton.disabled = true;
     saveButton.textContent = 'Saving…';
 
     try {
-      const { error } = await db.from('calendar_events').insert({
-        title,
-        event_type: mentorEvent ? 'educational' : 'university',
-        // event_type is constrained by the database to event, test, or exam.
-        // audience distinguishes university events from mentor-group events.
-        event_type: 'event',
-        description,
-        starts_at: startsAt.toISOString(),
-        location: null,
-        created_by: user.id,
-        audience: mentorEvent ? 'mentor_group' : 'university'
-      });
+      const { error } = mentorEvent
+        ? await db.rpc('create_event_request', {
+            p_title: title,
+            p_purpose: description,
+            p_event_date: dateKey(selectedDate),
+            p_event_time: eventTime,
+            p_venue: venue
+          })
+        : await db.from('calendar_events').insert({
+            title,
+            event_type: 'event',
+            description,
+            starts_at: startsAt.toISOString(),
+            location: venue,
+            created_by: user.id,
+            audience: 'university'
+          });
 
       if (error) throw error;
-      feedback.textContent = 'Event saved.';
+      feedback.textContent = mentorEvent
+        ? 'Your event request was sent to the supervisor for approval.'
+        : 'Event saved to the shared calendar.';
       eventForm.reset();
       eventForm.hidden = true;
+      if (mentorEvent) {
+        window.dispatchEvent(new CustomEvent('fye:event-request-created'));
+      }
       await loadMonthEvents();
     } catch (error) {
       console.error('Could not save calendar event:', error);
-      feedback.textContent = `Could not save the event: ${error.message}`;
+      const missingRequestRpc = mentorEvent && (
+        error.code === 'PGRST202'
+        || error.message?.includes('Could not find the function public.create_event_request')
+      );
+      feedback.textContent = missingRequestRpc
+        ? 'Event requests are not enabled in Supabase yet. Apply database/20260928000000_event_approval_workflow.sql, reload the schema, and try again.'
+        : `Could not save the event: ${error.message}`;
     } finally {
       saveButton.disabled = false;
       saveButton.textContent = 'Save event';

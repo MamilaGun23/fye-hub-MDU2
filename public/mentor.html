@@ -9,7 +9,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js" defer></script>
   <script src="calendar.js" defer></script>
+  <script src="event-workflow.js" defer></script>
   <script src="notices.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+  <script src="notifications.js" defer></script>
   <script src="mentor-approval.js" defer></script>
   <script src="mentor.js" defer></script>
 </head>
@@ -33,7 +36,7 @@
         <span>▦</span> Calendar
       </a>
       <a class="nav-link" href="#updates" data-view="updates">
-        <span>♡</span> Updates
+        <span>♡</span> Notifications <span class="notification-count" id="notification-count" hidden></span>
       </a>
       <a class="nav-link" href="#profile" data-view="profile">
         <span>♙</span> My profile
@@ -180,6 +183,13 @@
           </div>
         </div>
       </article>
+      <article class="content-panel">
+        <p class="section-kicker">SUPERVISOR REVIEW</p>
+        <h3>My event requests</h3>
+        <div id="mentor-event-requests" aria-live="polite">
+          <p class="summary-text">Loading your event requests…</p>
+        </div>
+      </article>
     </section>
 
     <section class="page-view" data-page="updates" hidden>
@@ -191,12 +201,13 @@
       </div>
 
       <article class="content-panel">
-        <p class="card-kicker">FYE TEAM · TODAY</p>
-        <h3>Welcome to the new mentor group</h3>
-        <p class="summary-text">
-          Your supervisor has assigned students to your mentor group. Please
-          introduce yourself and help them get settled.
-        </p>
+        <div class="notification-toolbar">
+          <p class="summary-text">Event decisions, reminders, and approved-event QR codes appear here.</p>
+          <button class="text-button" id="notifications-refresh" type="button">Refresh</button>
+        </div>
+        <div id="notification-list" aria-live="polite">
+          <p class="summary-text">Loading notifications…</p>
+        </div>
       </article>
     </section>
 

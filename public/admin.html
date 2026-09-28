@@ -14,7 +14,6 @@
   <script src="admin.js" defer></script>
   <script src="admin-notices.js" defer></script>
   <script src="admin-academic.js" defer></script>
-  <script src="admin-approvals.js" defer></script>
 </head>
 <body>
   <aside class="sidebar">
@@ -38,16 +37,13 @@
       <a class="nav-link" href="#notices" data-view="notices">
         <span>!</span> System notices
       </a>
-      <a class="nav-link" href="#mentor-approvals" data-view="mentor-approvals">
-        <span>✓</span> Mentor approvals
-      </a>
     </nav>
 
     <div class="sidebar-bottom">
       <div class="support-note">
         <span class="support-icon">✦</span>
         <strong>Keeping things running.</strong>
-        <p>Manage FYE Hub accounts and academic information.</p>
+        <p>Manage platform access, notices, and academic information.</p>
       </div>
 
       <a class="signout" id="admin-signout" href="index.html">
@@ -379,53 +375,6 @@
             <tbody id="notice-list">
               <tr>
                 <td colspan="4">Loading notices…</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </article>
-    </section>
-
-    <section class="page-view" data-page="mentor-approvals" hidden>
-      <div class="section-heading page-title">
-        <div>
-          <p class="section-kicker">REVIEW NEW MENTOR ACCOUNTS</p>
-          <h2>Mentor approvals</h2>
-        </div>
-        <button class="form-action" id="approvals-refresh" type="button">
-          Refresh list
-        </button>
-      </div>
-
-      <article class="content-panel">
-        <p class="summary-text">
-          Review a mentor’s profile and academic details before approving them
-          for student assignments. Existing mentors remain approved. New
-          mentor profiles start as pending.
-        </p>
-
-        <p
-          class="form-feedback"
-          id="approval-feedback"
-          role="status"
-          aria-live="polite"
-        ></p>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Faculty</th>
-                <th>Programme</th>
-                <th>Status</th>
-                <th>Review</th>
-              </tr>
-            </thead>
-            <tbody id="mentor-approval-list">
-              <tr>
-                <td colspan="6">Loading mentor profiles…</td>
               </tr>
             </tbody>
           </table>

@@ -838,6 +838,114 @@ footer b {
   min-width: 0;
 }
 
+.attendance-page {
+  min-height: 100vh;
+  background: #f1f5f9;
+}
+
+.attendance-main {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 32px 18px;
+}
+
+.attendance-panel {
+  width: min(100%, 520px);
+  padding: 30px;
+}
+
+.attendance-panel h1 {
+  margin: 10px 0;
+  color: #172033;
+  font: 800 28px 'Manrope', sans-serif;
+  letter-spacing: 0;
+}
+
+.attendance-panel .form-action {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.attendance-home {
+  display: inline-block;
+  margin-top: 18px;
+  color: #8a5a00;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.login-dialog {
+  border: 1px solid #e2e8f0;
+  border-top: 4px solid #f9a825;
+  border-radius: 16px;
+  padding: 34px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.login-dialog #login-form input,
+.login-dialog #signup-form input:not([type="checkbox"]),
+.login-dialog #signup-form select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+  color: #172033;
+  font: 13px 'DM Sans', sans-serif;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.login-dialog #login-form input:focus,
+.login-dialog #signup-form input:focus,
+.login-dialog #signup-form select:focus {
+  border-color: #d39217;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(249, 168, 37, 0.18);
+}
+
+.login-dialog #login-form input::placeholder,
+.login-dialog #signup-form input::placeholder {
+  color: #94a3b8;
+}
+
+.login-dialog #login-form label,
+.login-dialog #signup-form > label,
+.login-dialog #student-signup-fields label {
+  color: #334155;
+  font: 700 11px 'DM Sans', sans-serif;
+}
+
+.login-dialog .submit-button {
+  min-height: 45px;
+  border-radius: 8px;
+  background: #f9a825;
+  color: #172033;
+  font: 700 13px 'DM Sans', sans-serif;
+  transition: background 0.16s ease, box-shadow 0.16s ease;
+}
+
+.login-dialog .submit-button:hover {
+  background: #ffc107;
+  box-shadow: 0 4px 12px rgba(146, 98, 0, 0.16);
+}
+
+.login-dialog .dialog-role strong,
+.login-dialog .dialog-link {
+  color: #8a5a00;
+}
+
+.login-dialog .close-button {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #475569;
+}
+
 .login-dialog #signup-form > input,
 .login-dialog #signup-form > select {
   min-height: 42px;

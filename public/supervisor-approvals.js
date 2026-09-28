@@ -4,8 +4,6 @@
   if (!db || !list) return;
 
   const feedback = document.querySelector('#approval-feedback');
-  let facultyNames = new Map();
-  let programmeNames = new Map();
 
   function appendCell(row, value) {
     const cell = document.createElement('td');
@@ -13,10 +11,10 @@
     row.appendChild(cell);
   }
 
-  async function verifyAdmin() {
+  async function verifySupervisor() {
     const { data: authData, error: authError } = await db.auth.getUser();
     if (authError || !authData.user) {
-      feedback.textContent = 'Please sign in with an admin account.';
+      feedback.textContent = 'Please sign in with a supervisor account.';
       return false;
     }
 
@@ -26,10 +24,10 @@
       .eq('id', authData.user.id)
       .maybeSingle();
 
-    if (error || profile?.role !== 'admin') {
+    if (error || profile?.role !== 'supervisor') {
       feedback.textContent = error
-        ? `Could not verify admin access: ${error.message}`
-        : 'Only an admin account can review mentors.';
+        ? `Could not verify supervisor access: ${error.message}`
+        : 'Only a supervisor account can review mentors.';
       return false;
     }
     return true;
@@ -37,13 +35,13 @@
 
   async function reviewMentor(mentor, decision, button) {
     if (decision === 'rejected' && !window.confirm(
-      `Reject mentor registration for ${mentor.full_name || mentor.email}?`
+      `Decline mentor registration for ${mentor.full_name || mentor.email}?`
     )) return;
 
     button.disabled = true;
     feedback.textContent = decision === 'approved'
       ? 'Approving mentor…'
-      : 'Rejecting mentor…';
+      : 'Declining mentor…';
 
     const { error } = await db.rpc('review_mentor_approval', {
       p_mentor_id: mentor.id,
@@ -59,7 +57,7 @@
 
     feedback.textContent = decision === 'approved'
       ? 'Mentor approved. They can now receive student assignments.'
-      : 'Mentor registration rejected. They cannot receive assignments.';
+      : 'Mentor declined. They cannot receive assignments.';
     await loadPendingMentors();
   }
 
@@ -79,13 +77,13 @@
     const error = facultyResult.error || programmeResult.error || mentorResult.error;
     if (error) {
       console.error('Could not load mentor approvals:', error);
-      list.innerHTML = '<tr><td colspan="6">Mentor approval list unavailable.</td></tr>';
-      feedback.textContent = `Could not load mentor approvals: ${error.message}`;
+      list.innerHTML = '<tr><td colspan="6">Mentor review list unavailable.</td></tr>';
+      feedback.textContent = `Could not load mentor reviews: ${error.message}`;
       return;
     }
 
-    facultyNames = new Map((facultyResult.data || []).map((item) => [String(item.id), item.name]));
-    programmeNames = new Map((programmeResult.data || []).map((item) => [String(item.id), item.name]));
+    const facultyNames = new Map((facultyResult.data || []).map((item) => [String(item.id), item.name]));
+    const programmeNames = new Map((programmeResult.data || []).map((item) => [String(item.id), item.name]));
     const mentors = mentorResult.data || [];
     list.replaceChildren();
 
@@ -105,7 +103,7 @@
       appendCell(row, mentor.email || 'Email not provided');
       appendCell(row, facultyNames.get(String(mentor.faculty_id)) || 'Not selected');
       appendCell(row, programmeNames.get(String(mentor.programme_id)) || 'Not selected');
-      appendCell(row, mentor.mentor_approval_status === 'rejected' ? 'Rejected' : 'Pending');
+      appendCell(row, mentor.mentor_approval_status === 'rejected' ? 'Declined' : 'Pending');
 
       const actions = document.createElement('td');
       actions.className = 'mentor-approval-actions';
@@ -119,7 +117,7 @@
       const rejectButton = document.createElement('button');
       rejectButton.type = 'button';
       rejectButton.className = 'mentor-reject-button';
-      rejectButton.textContent = 'Reject';
+      rejectButton.textContent = 'Decline';
       rejectButton.addEventListener('click', () => reviewMentor(mentor, 'rejected', rejectButton));
 
       actions.append(approveButton, rejectButton);
@@ -135,14 +133,16 @@
   style.textContent = `
     .mentor-approval-actions{display:flex;gap:8px;white-space:nowrap}
     .mentor-approval-actions button{border:0;border-radius:8px;padding:8px 10px;font:inherit;cursor:pointer}
-    .mentor-approve-button{background:#e5f5e9;color:#24643a}
-    .mentor-reject-button{background:#fbeaea;color:#8e3838}
+    .mentor-approve-button{background:#f9a825;color:#172033;font-weight:700}
+    .mentor-approve-button:hover{background:#ffc107}
+    .mentor-reject-button{border:1px solid #fecaca!important;background:#fff7f7;color:#991b1b}
+    .mentor-reject-button:hover{background:#fee2e2}
     .mentor-approval-actions button:disabled{opacity:.6;cursor:wait}
   `;
   document.head.appendChild(style);
 
   async function init() {
-    if (await verifyAdmin()) await loadPendingMentors();
+    if (await verifySupervisor()) await loadPendingMentors();
   }
 
   init();

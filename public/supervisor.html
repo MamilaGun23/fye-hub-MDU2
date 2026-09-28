@@ -9,6 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js" defer></script>
   <script src="calendar.js" defer></script>
+  <script src="supervisor-approvals.js" defer></script>
+  <script src="event-workflow.js" defer></script>
   <script src="notices.js" defer></script>
   <script src="supervisor.js" defer></script>
 </head>
@@ -25,6 +27,8 @@
       <a class="nav-link" href="#students" data-view="students"><span>♧</span> Students</a>
       <a class="nav-link" href="#mentors" data-view="mentors"><span>♡</span> Mentors</a>
       <a class="nav-link" href="#assignments" data-view="assignments"><span>▦</span> Mentor assignments</a>
+      <a class="nav-link" href="#mentor-approvals" data-view="mentor-approvals"><span>✓</span> Mentor approvals</a>
+      <a class="nav-link" href="#event-requests" data-view="event-requests"><span>✓</span> Event requests</a>
     </nav>
 
     <div class="sidebar-bottom">
@@ -181,6 +185,39 @@
           <table>
             <thead><tr><th>Student</th><th>Faculty</th><th>Programme</th><th>Mentor</th><th>Assigned</th></tr></thead>
             <tbody id="assignment-list"><tr><td colspan="5">Loading assignments…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="event-requests" hidden>
+      <div class="section-heading page-title">
+        <div><p class="section-kicker">SUPERVISOR REVIEW</p><h2>Mentor event requests</h2></div>
+        <button class="form-action" id="event-requests-refresh" type="button">Refresh requests</button>
+      </div>
+      <p class="summary-text">Approve requests to publish them to every calendar, or decline them with a reason for the mentor.</p>
+      <p class="form-feedback" id="event-request-feedback" role="status" aria-live="polite"></p>
+      <div id="event-request-list" class="event-request-list" aria-live="polite">
+        <article class="content-panel"><p class="summary-text">Loading event requests…</p></article>
+      </div>
+    </section>
+
+    <section class="page-view" data-page="mentor-approvals" hidden>
+      <div class="section-heading page-title">
+        <div><p class="section-kicker">SUPERVISOR REVIEW</p><h2>Mentor approvals</h2></div>
+        <button class="form-action" id="approvals-refresh" type="button">Refresh list</button>
+      </div>
+      <article class="content-panel">
+        <p class="summary-text">Review new mentor profiles before they can receive student assignments. Declined applications can be reviewed again.</p>
+        <p class="form-feedback" id="approval-feedback" role="status" aria-live="polite"></p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Status</th><th>Review</th></tr>
+            </thead>
+            <tbody id="mentor-approval-list">
+              <tr><td colspan="6">Loading mentor profiles…</td></tr>
+            </tbody>
           </table>
         </div>
       </article>

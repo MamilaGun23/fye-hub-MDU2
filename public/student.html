@@ -9,6 +9,7 @@
   <script src="supabase-config.js" defer></script>
   <script src="calendar.js" defer></script>
   <script src="notices.js" defer></script>
+  <script src="notifications.js" defer></script>
   <script src="student.js" defer></script>
 </head>
 <body>
@@ -30,7 +31,7 @@
         <span>▦</span> Calendar
       </a>
       <a class="nav-link" href="#updates" data-view="updates">
-        <span>♧</span> Updates
+        <span>♧</span> Notifications <span class="notification-count" id="notification-count" hidden></span>
       </a>
     </nav>
 
@@ -51,8 +52,8 @@
         <p class="page-label">Student dashboard</p>
       </div>
       <div class="profile-chip">
-        <span class="avatar small-avatar">TN</span>
-        <span class="profile-name">Thando Ndlovu</span>
+        <span class="avatar small-avatar" id="student-avatar">ST</span>
+        <span class="profile-name" id="student-profile-name">Student</span>
       </div>
     </header>
 
@@ -64,7 +65,7 @@
         <div class="dashboard-hero-scrim" aria-hidden="true"></div>
         <div class="welcome-copy">
           <p class="welcome-kicker">YOUR FIRST YEAR, TOGETHER</p>
-          <h1>Hey, Thando! <span class="wave">👋</span></h1>
+          <h1>Hey, <span id="student-greeting-name">Student</span>! <span class="wave">👋</span></h1>
           <p>
             You’re finding your way, one day at a time.
             Your FYE family is right here with you.
@@ -132,14 +133,13 @@
       </article>
 
       <article class="updates-card overview-update">
-        <p class="section-kicker">LATEST FROM YOUR FYE FAMILY</p>
-        <h3>You’ve got this!</h3>
-        <p>
-          Remember, asking questions is part of learning.
-          Your mentor is happy to help you settle in.
+        <p class="section-kicker">LATEST NOTIFICATION</p>
+        <h3 id="latest-notification-title">You’re all caught up</h3>
+        <p id="latest-notification-message">
+          Approved event notices and reminders will appear here.
         </p>
         <button class="text-button" type="button" data-go="updates">
-          See all updates →
+          View notifications →
         </button>
       </article>
     </section>
@@ -254,26 +254,12 @@
       </div>
 
       <article class="content-panel update-item">
-        <span class="update-icon">✦</span>
-        <div>
-          <p class="card-kicker">FROM THE FYE TEAM · TODAY</p>
-          <h3>You’ve got this!</h3>
-          <p class="summary-text">
-            Remember, asking questions is part of learning.
-            Your mentor is happy to help you settle in.
-          </p>
+        <div class="notification-toolbar">
+          <p class="summary-text">Event approvals, decisions, and reminders appear here.</p>
+          <button class="text-button" id="notifications-refresh" type="button">Refresh</button>
         </div>
-      </article>
-
-      <article class="content-panel update-item">
-        <span class="update-icon">▦</span>
-        <div>
-          <p class="card-kicker">CALENDAR REMINDER</p>
-          <h3>Introduction to Biology test</h3>
-          <p class="summary-text">
-            Your test is on 8 October at 09:00 on Main Campus.
-            Check your course information for what to bring.
-          </p>
+        <div id="notification-list" aria-live="polite">
+          <p class="summary-text">Loading notifications…</p>
         </div>
       </article>
     </section>
