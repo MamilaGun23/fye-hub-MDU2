@@ -518,6 +518,264 @@ footer b {
   margin-top: 14px;
 }
 
+.landing-page {
+  color: #f8fafc;
+  background: #0f172a;
+}
+
+.landing-page .topbar {
+  flex: none;
+  background: #0f172a;
+  border-bottom-color: rgba(255, 255, 255, 0.12);
+}
+
+.landing-page .brand {
+  color: #f8fafc;
+}
+
+.landing-page .brand b,
+.landing-page .brand-mark {
+  color: #facc15;
+}
+
+.landing-page .brand-mark {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.landing-page .university {
+  color: #cbd5e1;
+}
+
+.landing-page main.landing-main {
+  display: block;
+  padding: 0;
+}
+
+.landing-page .welcome {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  max-width: none;
+  min-height: 620px;
+  height: 100%;
+  text-align: left;
+  background: #0f172a;
+}
+
+.landing-page .hero-video {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 40% center;
+  transform: scale(1.1);
+}
+
+.landing-page .hero-scrim {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.landing-page .welcome-content {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(420px, 540px);
+  align-items: center;
+  gap: 64px;
+  width: min(100%, 1440px);
+  min-height: inherit;
+  margin: 0 auto;
+  padding: 70px clamp(24px, 6vw, 88px);
+}
+
+.landing-page .welcome-copy {
+  max-width: 580px;
+}
+
+.landing-page .eyebrow {
+  color: #cbd5e1;
+  font-size: 11px;
+  letter-spacing: 0.35em;
+}
+
+.landing-page .live-dot {
+  background: #facc15;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.18);
+}
+
+.landing-page h1 {
+  margin: 22px 0 14px;
+  color: #fff;
+  font-size: 64px;
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.landing-page h1 span {
+  color: #facc15;
+}
+
+.landing-page h1 span::after {
+  display: none;
+}
+
+.landing-page .intro {
+  max-width: 500px;
+  margin: 0;
+  color: #e2e8f0;
+  font-size: 17px;
+}
+
+.landing-page .role-grid {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  max-width: none;
+  margin: 0;
+}
+
+.landing-page .role-card {
+  min-height: 92px;
+  border-color: rgba(255, 255, 255, 0.24);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.48);
+  color: #fff;
+  backdrop-filter: blur(8px);
+}
+
+.landing-page .role-card:hover,
+.landing-page .role-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: rgba(250, 204, 21, 0.8);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.landing-page .role-card:focus-visible {
+  outline: 2px solid #facc15;
+  outline-offset: 3px;
+}
+
+.landing-page .role-icon,
+.landing-page .student .role-icon,
+.landing-page .mentor .role-icon,
+.landing-page .supervisor .role-icon,
+.landing-page .admin .role-icon {
+  background: rgba(250, 204, 21, 0.17);
+  color: #fde68a;
+}
+
+.landing-page .role-copy small {
+  color: #cbd5e1;
+  white-space: normal;
+}
+
+.landing-page .arrow {
+  color: #fde68a;
+}
+
+.landing-page .help-note {
+  margin-top: 17px;
+  color: #cbd5e1;
+  text-align: center;
+}
+
+.landing-page .decor {
+  z-index: 1;
+  color: rgba(250, 204, 21, 0.55);
+}
+
+.landing-page footer {
+  flex: none;
+  border-top-color: rgba(255, 255, 255, 0.12);
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.landing-page footer b {
+  color: #facc15;
+}
+
+@media (max-width: 1000px) {
+  .landing-page .welcome-content {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.95fr);
+    gap: 36px;
+  }
+
+  .landing-page h1 {
+    font-size: 52px;
+  }
+}
+
+@media (max-width: 760px) {
+  .landing-page .welcome {
+    min-height: 0;
+    height: auto;
+  }
+
+  .landing-page .welcome-content {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    min-height: 0;
+    padding: 56px 24px;
+  }
+
+  .landing-page h1 {
+    font-size: 48px;
+  }
+
+  .landing-page .role-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .landing-page .topbar {
+    height: 66px;
+  }
+
+  .landing-page .university {
+    font-size: 11px;
+  }
+
+  .landing-page .welcome-content {
+    gap: 30px;
+    padding: 44px 20px 48px;
+  }
+
+  .landing-page .eyebrow {
+    font-size: 9px;
+    letter-spacing: 0.25em;
+  }
+
+  .landing-page h1 {
+    font-size: 42px;
+  }
+
+  .landing-page .intro {
+    font-size: 14px;
+  }
+
+  .landing-page .role-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .landing-page .role-card {
+    min-height: 76px;
+  }
+
+  .landing-page footer {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+}
+
 .overview-update {
   margin-top: 15px;
 }

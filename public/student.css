@@ -757,6 +757,306 @@ a {
   color: #93618a;
   background: #f3e7f2;
 }
+
+:root {
+  --ink: #172033;
+  --muted: #64748b;
+  --blue: #1a2a6c;
+  --paper: #f1f5f9;
+  --line: #e2e8f0;
+  --white: #ffffff;
+  --navy: #1a2a6c;
+  --gold: #f9a825;
+  --gold-hover: #ffc107;
+}
+
+body {
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.sidebar {
+  background: var(--navy);
+  border-right-color: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+.brand {
+  color: #f8fafc;
+}
+
+.brand b,
+.brand-mark {
+  color: var(--gold);
+}
+
+.brand-mark {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.menu-label {
+  color: #cbd5e1;
+}
+
+.nav-link {
+  color: #cbd5e1;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--gold-hover);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.support-note {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.support-icon {
+  color: var(--gold-hover);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.support-note p,
+.signout {
+  color: #cbd5e1;
+}
+
+.signout:hover {
+  color: var(--gold-hover);
+}
+
+.topbar {
+  border-bottom-color: var(--line);
+}
+
+.campus-label,
+.welcome-kicker,
+.section-kicker,
+.card-kicker {
+  color: #64748b;
+}
+
+.welcome-banner {
+  min-height: 240px;
+  border-radius: 14px;
+  background: #0f172a;
+  isolation: isolate;
+}
+
+.dashboard-hero-video,
+.dashboard-hero-scrim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.dashboard-hero-video {
+  z-index: -2;
+  object-fit: cover;
+  object-position: 40% center;
+  transform: scale(1.1);
+}
+
+.dashboard-hero-scrim {
+  z-index: -1;
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.welcome-copy {
+  z-index: 1;
+  max-width: 580px;
+}
+
+.welcome-copy .welcome-kicker {
+  color: #fcd34d;
+}
+
+.welcome-banner h1 {
+  color: #ffffff;
+}
+
+.welcome-banner p:not(.welcome-kicker) {
+  color: #e2e8f0;
+}
+
+.banner-art {
+  z-index: 1;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.art-circle {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sun,
+.art-heart,
+.art-sparkle {
+  color: var(--gold-hover);
+}
+
+.section-heading h2,
+.content-panel h3,
+.overview-update h3,
+.card-heading h3,
+.mentor-person h4,
+.event-info h4,
+.event-details h4,
+.student-row h3,
+.academic-list h3 {
+  color: #172033;
+}
+
+.mentor-card,
+.next-card,
+.events-card,
+.updates-card,
+.content-panel {
+  border-color: var(--line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.term-pill {
+  color: #475569;
+  background: #e2e8f0;
+}
+
+.mentor-heart,
+.calendar-icon,
+.date-block,
+.event-date,
+.update-icon,
+.avatar {
+  color: var(--navy);
+  background: #e8edf8;
+}
+
+.mentor-avatar {
+  color: #8a5a00;
+  background: #fff2cc;
+}
+
+.event-type.test {
+  color: #8a5a00;
+  background: #fff2cc;
+}
+
+.event-type.event {
+  color: var(--navy);
+  background: #e8edf8;
+}
+
+.text-button,
+.text-link,
+.student-row a {
+  color: #8a5a00;
+}
+
+.text-button:hover,
+.text-link:hover,
+.student-row a:hover {
+  color: #5f3d00;
+}
+
+.contact-button {
+  border-color: #f2d68f;
+  color: #8a5a00;
+}
+
+.contact-button:hover {
+  background: #fff8e6;
+}
+
+.data-form label {
+  color: #334155;
+}
+
+.data-form input,
+.data-form select,
+.admin-filter-grid input,
+.admin-filter-grid select {
+  border-color: #cbd5e1;
+  border-radius: 8px;
+  color: #172033;
+}
+
+.data-form input:focus,
+.data-form select:focus,
+.admin-filter-grid input:focus,
+.admin-filter-grid select:focus {
+  border-color: var(--gold);
+  outline: 3px solid rgba(249, 168, 37, 0.2);
+}
+
+.form-action {
+  border-radius: 8px;
+  background: var(--gold);
+  color: #172033;
+}
+
+.form-action:hover {
+  background: var(--gold-hover);
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(249, 168, 37, 0.7);
+  outline-offset: 2px;
+}
+
+th,
+td,
+.upcoming-event,
+.student-row {
+  border-bottom-color: #e2e8f0;
+}
+
+th {
+  color: #64748b;
+}
+
+td,
+.summary-text,
+.mentor-person p,
+.event-info p,
+.event-details p,
+.student-row p,
+.overview-update > p:not(.section-kicker),
+.academic-list ul {
+  color: #64748b;
+}
+
+.dashboard-footer {
+  color: #64748b;
+}
+
+.dashboard-footer b {
+  color: #b77908;
+}
+
+@media (max-width: 760px) {
+  .sidebar {
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .main-nav {
+    scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-hero-video {
+    display: none;
+  }
+}
 .data-form {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -855,33 +1155,6 @@ td {
   color: #64788f;
   font-size: 12px;
   line-height: 2;
-}
-.profile-preview-wrap {
-  display: flex;
-  align-items: center;
-  min-height: 90px;
-}
-
-.profile-preview,
-.student-mentor-picture img {
-  width: 82px;
-  height: 82px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.student-mentor-picture {
-  flex: none;
-}
-
-.whatsapp-button {
-  margin-top: 9px;
-  color: #267348;
-  border-color: #cfe5d6;
-}
-
-.whatsapp-button:hover {
-  background: #f1f8f3;
 }
 .profile-preview-wrap {
   display: flex;

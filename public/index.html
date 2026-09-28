@@ -10,7 +10,7 @@
   <script src="supabase-config.js" defer></script>
   <script src="script.js" defer></script>
 </head>
-<body>
+<body class="landing-page">
   <header class="topbar">
     <a class="brand" href="#home" aria-label="FYE Hub home">
       <span class="brand-mark" aria-hidden="true">✿</span>
@@ -19,64 +19,75 @@
     <span class="university">University of Mpumalanga</span>
   </header>
 
-  <main id="home">
+  <main id="home" class="landing-main">
     <section class="welcome" aria-labelledby="welcome-title">
       <div class="decor decor-one" aria-hidden="true">✦</div>
       <div class="decor decor-two" aria-hidden="true">●</div>
 
-      <div class="eyebrow">
-        <span class="live-dot"></span>
-        YOUR FIRST YEAR, TOGETHER
+      <video class="hero-video" autoplay muted loop playsinline aria-hidden="true" tabindex="-1">
+        <source src="hero-video.mp4" type="video/mp4">
+      </video>
+      <div class="hero-scrim" aria-hidden="true"></div>
+
+      <div class="welcome-content">
+        <div class="welcome-copy">
+          <div class="eyebrow">
+            <span class="live-dot"></span>
+            YOUR FIRST YEAR, TOGETHER
+          </div>
+
+          <h1 id="welcome-title">Welcome to the<br><span>FYE family!</span></h1>
+
+          <p class="intro">
+            A new chapter is better together. Find your people, meet your mentor,
+            and make your first year count.
+          </p>
+        </div>
+
+        <div class="welcome-options">
+          <div class="role-grid" aria-label="Choose your role to sign in">
+            <button class="role-card student" data-role="Student" type="button">
+              <span class="role-icon" aria-hidden="true">☀</span>
+              <span class="role-copy">
+                <strong>Student</strong>
+                <small>Your first-year journey starts here</small>
+              </span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </button>
+
+            <button class="role-card mentor" data-role="Mentor" type="button">
+              <span class="role-icon" aria-hidden="true">♡</span>
+              <span class="role-copy">
+                <strong>Mentor</strong>
+                <small>Be the guide you once needed</small>
+              </span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </button>
+
+            <button class="role-card supervisor" data-role="Supervisor" type="button">
+              <span class="role-icon" aria-hidden="true">✳</span>
+              <span class="role-copy">
+                <strong>Supervisor</strong>
+                <small>Help students find their match</small>
+              </span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </button>
+
+            <button class="role-card admin" data-role="Admin" type="button">
+              <span class="role-icon" aria-hidden="true">⚙</span>
+              <span class="role-copy">
+                <strong>Admin</strong>
+                <small>Keep the FYE community thriving</small>
+              </span>
+              <span class="arrow" aria-hidden="true">↗</span>
+            </button>
+          </div>
+
+          <p class="help-note">
+            Not sure where to start? Choose your role above to sign in.
+          </p>
+        </div>
       </div>
-
-      <h1 id="welcome-title">Welcome to the<br><span>FYE family!</span></h1>
-
-      <p class="intro">
-        A new chapter is better together. Find your people, meet your mentor,
-        and make your first year count.
-      </p>
-
-      <div class="role-grid" aria-label="Choose your role to sign in">
-        <button class="role-card student" data-role="Student" type="button">
-          <span class="role-icon" aria-hidden="true">☀</span>
-          <span class="role-copy">
-            <strong>Student</strong>
-            <small>Your first-year journey starts here</small>
-          </span>
-          <span class="arrow" aria-hidden="true">↗</span>
-        </button>
-
-        <button class="role-card mentor" data-role="Mentor" type="button">
-          <span class="role-icon" aria-hidden="true">♡</span>
-          <span class="role-copy">
-            <strong>Mentor</strong>
-            <small>Be the guide you once needed</small>
-          </span>
-          <span class="arrow" aria-hidden="true">↗</span>
-        </button>
-
-        <button class="role-card supervisor" data-role="Supervisor" type="button">
-          <span class="role-icon" aria-hidden="true">✳</span>
-          <span class="role-copy">
-            <strong>Supervisor</strong>
-            <small>Help students find their match</small>
-          </span>
-          <span class="arrow" aria-hidden="true">↗</span>
-        </button>
-
-        <button class="role-card admin" data-role="Admin" type="button">
-          <span class="role-icon" aria-hidden="true">⚙</span>
-          <span class="role-copy">
-            <strong>Admin</strong>
-            <small>Keep the FYE community thriving</small>
-          </span>
-          <span class="arrow" aria-hidden="true">↗</span>
-        </button>
-      </div>
-
-      <p class="help-note">
-        Not sure where to start? Choose your role above to sign in.
-      </p>
     </section>
   </main>
 
