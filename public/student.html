@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Student Dashboard | FYE Hub</title>
+  <link rel="stylesheet" href="student.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="calendar.js" defer></script>
+  <script src="notices.js" defer></script>
+  <script src="student.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">✿</span>
+      <span>FYE <b>HUB</b></span>
+    </a>
+
+    <p class="menu-label">STUDENT MENU</p>
+    <nav class="main-nav" aria-label="Student navigation">
+      <a class="nav-link active" href="#overview" data-view="overview">
+        <span>⌂</span> Overview
+      </a>
+      <a class="nav-link" href="#mentor" data-view="mentor">
+        <span>♡</span> My mentor
+      </a>
+      <a class="nav-link" href="#calendar" data-view="calendar">
+        <span>▦</span> Calendar
+      </a>
+      <a class="nav-link" href="#updates" data-view="updates">
+        <span>♧</span> Updates
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="support-note">
+        <span class="support-icon">✦</span>
+        <strong>You belong here.</strong>
+        <p>Your FYE family is here to support you.</p>
+      </div>
+      <a class="signout" href="index.html">↪ <span>Sign out</span></a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="campus-label">UNIVERSITY OF MPUMALANGA</p>
+        <p class="page-label">Student dashboard</p>
+      </div>
+      <div class="profile-chip">
+        <span class="avatar small-avatar">TN</span>
+        <span class="profile-name">Thando Ndlovu</span>
+      </div>
+    </header>
+
+    <section class="page-view" data-page="overview">
+      <div class="welcome-banner">
+        <div class="welcome-copy">
+          <p class="welcome-kicker">YOUR FIRST YEAR, TOGETHER</p>
+          <h1>Hey, Thando! <span class="wave">👋</span></h1>
+          <p>
+            You’re finding your way, one day at a time.
+            Your FYE family is right here with you.
+          </p>
+          <button class="text-button" type="button" data-go="mentor">
+            Meet your mentor →
+          </button>
+        </div>
+        <div class="banner-art" aria-hidden="true">
+          <span class="sun">☀</span>
+          <span class="art-heart">♡</span>
+          <span class="art-sparkle">✦</span>
+          <span class="art-circle"></span>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">YOUR SUPPORT TEAM</p>
+          <h2>Your first-year snapshot</h2>
+        </div>
+        <span class="term-pill"><span></span> First year</span>
+      </div>
+
+      <div class="support-grid">
+        <article class="mentor-card">
+          <div class="card-heading">
+            <div>
+              <p class="card-kicker">YOUR ASSIGNED MENTOR</p>
+              <h3>Lerato Mokoena</h3>
+            </div>
+            <span class="mentor-heart">♡</span>
+          </div>
+          <p class="summary-text">Peer Mentor · Faculty of Agriculture</p>
+          <div class="mentor-status"><span></span> Here to support you</div>
+          <button class="text-button" type="button" data-go="mentor">
+            View mentor details →
+          </button>
+        </article>
+
+        <article class="next-card">
+          <div class="card-heading">
+            <div>
+              <p class="card-kicker">NEXT IMPORTANT DATE</p>
+              <h3>Introduction to Biology</h3>
+            </div>
+            <span class="calendar-icon">▦</span>
+          </div>
+          <p class="summary-text">Test · 8 October · 09:00 · Main Campus</p>
+          <button class="text-button" type="button" data-go="calendar">
+            Open your calendar →
+          </button>
+        </article>
+      </div>
+
+      <article class="content-panel">
+        <p class="section-kicker">YOUR STUDIES</p>
+        <h3>My academic details</h3>
+        <p class="summary-text">
+          Faculty: <strong id="student-faculty">Loading…</strong>
+        </p>
+        <p class="summary-text">
+          Programme: <strong id="student-programme">Loading…</strong>
+        </p>
+      </article>
+
+      <article class="updates-card overview-update">
+        <p class="section-kicker">LATEST FROM YOUR FYE FAMILY</p>
+        <h3>You’ve got this!</h3>
+        <p>
+          Remember, asking questions is part of learning.
+          Your mentor is happy to help you settle in.
+        </p>
+        <button class="text-button" type="button" data-go="updates">
+          See all updates →
+        </button>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="mentor" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">YOUR SUPPORT PERSON</p>
+          <h2>My mentor</h2>
+        </div>
+      </div>
+
+      <article class="content-panel mentor-detail">
+        <div class="student-mentor-picture">
+          <span
+            class="avatar mentor-avatar large-avatar"
+            id="student-mentor-initials"
+          >LM</span>
+          <img
+            id="student-mentor-photo"
+            alt="Mentor profile picture"
+            hidden
+          >
+        </div>
+
+        <div>
+          <p class="card-kicker">YOUR ASSIGNED PEER MENTOR</p>
+          <h3 id="student-mentor-name">Lerato Mokoena</h3>
+          <p class="summary-text" id="student-mentor-faculty">
+            Faculty of Agriculture
+          </p>
+          <p class="summary-text" id="student-mentor-intro"></p>
+          <p class="mentor-status">
+            <span></span> Available to support you
+          </p>
+        </div>
+      </article>
+
+      <article class="content-panel">
+        <p class="section-kicker">CONTACT YOUR MENTOR</p>
+        <h3>Need a hand settling in?</h3>
+        <p class="summary-text">
+          Reach out to Lerato about university life, finding your way around
+          campus, or getting connected to support.
+        </p>
+
+        <a class="contact-button" href="mailto:lerato.mokoena@ump.ac.za">
+          ✉ <span>Email Lerato</span>
+        </a>
+
+        <a
+          class="contact-button whatsapp-button"
+          id="student-whatsapp-link"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+          hidden
+        >
+          <span>Join your mentor’s WhatsApp group</span>
+        </a>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="calendar" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">PLAN AHEAD</p>
+          <h2>My calendar</h2>
+        </div>
+      </div>
+
+      <article class="content-panel">
+        <p class="summary-text">
+          Important dates shared by your mentor and FYE team.
+        </p>
+
+        <div class="upcoming-event">
+          <div class="event-date"><span>OCT</span><strong>08</strong></div>
+          <div class="event-info">
+            <span class="event-type test">TEST</span>
+            <h4>Introduction to Biology</h4>
+            <p>09:00 · Main Campus</p>
+          </div>
+        </div>
+
+        <div class="upcoming-event">
+          <div class="event-date"><span>OCT</span><strong>12</strong></div>
+          <div class="event-info">
+            <span class="event-type event">FYE EVENT</span>
+            <h4>First-year meet and greet</h4>
+            <p>14:00 · Student Centre</p>
+          </div>
+        </div>
+
+        <div class="upcoming-event">
+          <div class="event-date"><span>OCT</span><strong>20</strong></div>
+          <div class="event-info">
+            <span class="event-type exam">EXAM</span>
+            <h4>Academic Literacy</h4>
+            <p>10:00 · Check your timetable</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="updates" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">ANNOUNCEMENTS & REMINDERS</p>
+          <h2>Updates</h2>
+        </div>
+      </div>
+
+      <article class="content-panel update-item">
+        <span class="update-icon">✦</span>
+        <div>
+          <p class="card-kicker">FROM THE FYE TEAM · TODAY</p>
+          <h3>You’ve got this!</h3>
+          <p class="summary-text">
+            Remember, asking questions is part of learning.
+            Your mentor is happy to help you settle in.
+          </p>
+        </div>
+      </article>
+
+      <article class="content-panel update-item">
+        <span class="update-icon">▦</span>
+        <div>
+          <p class="card-kicker">CALENDAR REMINDER</p>
+          <h3>Introduction to Biology test</h3>
+          <p class="summary-text">
+            Your test is on 8 October at 09:00 on Main Campus.
+            Check your course information for what to bring.
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <footer class="dashboard-footer">
+      <span>Growing together, one first year at a time.</span>
+      <span>FYE Hub · University of Mpumalanga</span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f6fc">
+  <title>First Year Experience Hub | University of Mpumalanga</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#home" aria-label="FYE Hub home">
+      <span class="brand-mark" aria-hidden="true">✿</span>
+      <span>FYE <b>HUB</b></span>
+    </a>
+    <span class="university">University of Mpumalanga</span>
+  </header>
+
+  <main id="home">
+    <section class="welcome" aria-labelledby="welcome-title">
+      <div class="decor decor-one" aria-hidden="true">✦</div>
+      <div class="decor decor-two" aria-hidden="true">●</div>
+
+      <div class="eyebrow">
+        <span class="live-dot"></span>
+        YOUR FIRST YEAR, TOGETHER
+      </div>
+
+      <h1 id="welcome-title">Welcome to the<br><span>FYE family!</span></h1>
+
+      <p class="intro">
+        A new chapter is better together. Find your people, meet your mentor,
+        and make your first year count.
+      </p>
+
+      <div class="role-grid" aria-label="Choose your role to sign in">
+        <button class="role-card student" data-role="Student" type="button">
+          <span class="role-icon" aria-hidden="true">☀</span>
+          <span class="role-copy">
+            <strong>Student</strong>
+            <small>Your first-year journey starts here</small>
+          </span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </button>
+
+        <button class="role-card mentor" data-role="Mentor" type="button">
+          <span class="role-icon" aria-hidden="true">♡</span>
+          <span class="role-copy">
+            <strong>Mentor</strong>
+            <small>Be the guide you once needed</small>
+          </span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </button>
+
+        <button class="role-card supervisor" data-role="Supervisor" type="button">
+          <span class="role-icon" aria-hidden="true">✳</span>
+          <span class="role-copy">
+            <strong>Supervisor</strong>
+            <small>Help students find their match</small>
+          </span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </button>
+
+        <button class="role-card admin" data-role="Admin" type="button">
+          <span class="role-icon" aria-hidden="true">⚙</span>
+          <span class="role-copy">
+            <strong>Admin</strong>
+            <small>Keep the FYE community thriving</small>
+          </span>
+          <span class="arrow" aria-hidden="true">↗</span>
+        </button>
+      </div>
+
+      <p class="help-note">
+        Not sure where to start? Choose your role above to sign in.
+      </p>
+    </section>
+  </main>
+
+  <footer>
+    <span>Growing together, one first year at a time.</span>
+    <span>University of Mpumalanga <b>·</b> FYE Hub</span>
+  </footer>
+
+  <dialog class="login-dialog" aria-labelledby="dialog-title">
+    <button class="close-button" type="button" aria-label="Close sign-in window">×</button>
+
+    <div class="dialog-flower" aria-hidden="true">✿</div>
+    <p class="dialog-eyebrow">WELCOME TO THE FYE FAMILY</p>
+    <h2 id="dialog-title">Sign in</h2>
+    <p class="dialog-role">Signing in as <strong id="selected-role">Student</strong></p>
+
+    <form id="login-form">
+      <label for="email">University email</label>
+      <input
+        id="email"
+        name="email"
+        type="email"
+        placeholder="name@ump.ac.za"
+        autocomplete="username"
+        required
+      >
+
+      <label for="password">Password</label>
+      <input
+        id="password"
+        name="password"
+        type="password"
+        placeholder="Enter your password"
+        autocomplete="current-password"
+        required
+      >
+
+      <button class="submit-button" type="submit">
+        Sign in <span aria-hidden="true">→</span>
+      </button>
+    </form>
+
+    <form id="signup-form" style="display: none;">
+      <div id="student-signup-fields">
+        <label for="signup-name">Full name</label>
+        <input
+          id="signup-name"
+          name="full_name"
+          type="text"
+          autocomplete="name"
+        >
+
+        <label for="signup-faculty">Faculty</label>
+        <select id="signup-faculty" name="faculty">
+          <option value="">Loading faculties…</option>
+        </select>
+
+        <label for="signup-programme">Programme</label>
+        <select id="signup-programme" name="programme" disabled>
+          <option value="">Choose a faculty first</option>
+        </select>
+      </div>
+
+      <label for="signup-email">University email</label>
+      <input
+        id="signup-email"
+        name="email"
+        type="email"
+        placeholder="name@ump.ac.za"
+        autocomplete="email"
+        required
+      >
+
+      <label for="signup-password">Create password</label>
+      <input
+        id="signup-password"
+        name="password"
+        type="password"
+        placeholder="At least 8 characters"
+        autocomplete="new-password"
+        minlength="8"
+        required
+      >
+
+      <button class="submit-button" id="signup-button" type="submit">
+        Create account <span aria-hidden="true">→</span>
+      </button>
+    </form>
+
+    <p class="form-message" role="status" aria-live="polite"></p>
+
+    <p class="login-help" id="signup-prompt" style="display: none;">
+      First time here?
+      <button class="dialog-link" id="show-signup" type="button">
+        Create an account
+      </button>
+    </p>
+
+    <p class="login-help" id="signin-prompt" style="display: none;">
+      Already have an account?
+      <button class="dialog-link" id="show-signin" type="button">
+        Sign in
+      </button>
+    </p>
+
+    <p class="login-help">
+      Need help accessing your account? Contact your FYE coordinator.
+    </p>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mentor Dashboard | FYE Hub</title>
+  <link rel="stylesheet" href="student.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="calendar.js" defer></script>
+  <script src="notices.js" defer></script>
+  <script src="mentor-approval.js" defer></script>
+  <script src="mentor.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">✿</span>
+      <span>FYE <b>HUB</b></span>
+    </a>
+
+    <p class="menu-label">MENTOR MENU</p>
+
+    <nav class="main-nav" aria-label="Mentor navigation">
+      <a class="nav-link active" href="#overview" data-view="overview">
+        <span>⌂</span> Overview
+      </a>
+      <a class="nav-link" href="#students" data-view="students">
+        <span>♧</span> My students
+      </a>
+      <a class="nav-link" href="#calendar" data-view="calendar">
+        <span>▦</span> Calendar
+      </a>
+      <a class="nav-link" href="#updates" data-view="updates">
+        <span>♡</span> Updates
+      </a>
+      <a class="nav-link" href="#profile" data-view="profile">
+        <span>♙</span> My profile
+      </a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="support-note">
+        <span class="support-icon">✦</span>
+        <strong>Your support matters.</strong>
+        <p>Thanks for helping new students find their way.</p>
+      </div>
+
+      <a class="signout" href="index.html">↪ <span>Sign out</span></a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="campus-label">UNIVERSITY OF MPUMALANGA</p>
+        <p class="page-label">Mentor dashboard</p>
+      </div>
+
+      <div class="profile-chip">
+        <span class="avatar small-avatar">LM</span>
+        <span class="profile-name">Lerato Mokoena</span>
+      </div>
+    </header>
+
+    <section class="page-view" data-page="overview">
+      <div class="welcome-banner">
+        <div class="welcome-copy">
+          <p class="welcome-kicker">THANK YOU FOR BEING HERE</p>
+          <h1>
+            Hello, <span id="mentor-greeting-name">Mentor</span>!
+            <span class="wave">👋</span>
+          </h1>
+          <p>
+            Your guidance can make a real difference in a first-year student’s
+            journey.
+          </p>
+          <button class="text-button" type="button" data-go="students">
+            View your students →
+          </button>
+        </div>
+
+        <div class="banner-art" aria-hidden="true">
+          <span class="sun">☀</span>
+          <span class="art-heart">♡</span>
+          <span class="art-sparkle">✦</span>
+          <span class="art-circle"></span>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">YOUR MENTOR GROUP</p>
+          <h2>A quick overview</h2>
+        </div>
+        <span class="term-pill"><span></span> First year</span>
+      </div>
+
+      <div class="support-grid">
+        <article class="mentor-card">
+          <p class="card-kicker">ASSIGNED STUDENTS</p>
+          <h3 id="mentor-student-count">Loading…</h3>
+          <p class="summary-text">
+            Your assigned students are listed in My students.
+          </p>
+          <button class="text-button" type="button" data-go="students">
+            Open student list →
+          </button>
+        </article>
+
+        <article class="next-card">
+          <p class="card-kicker">NEXT IMPORTANT DATE</p>
+          <h3>First-year meet and greet</h3>
+          <p class="summary-text">
+            FYE event · 12 October · 14:00 · Student Centre
+          </p>
+          <button class="text-button" type="button" data-go="calendar">
+            Open calendar →
+          </button>
+        </article>
+      </div>
+    </section>
+
+    <section class="page-view" data-page="students" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">YOUR MENTOR GROUP</p>
+          <h2>My students</h2>
+        </div>
+      </div>
+
+      <article class="content-panel">
+        <p class="summary-text">
+          These are the first-year students currently assigned to you.
+        </p>
+
+        <div id="mentor-student-list" aria-live="polite">
+          <p class="summary-text">Loading your assigned students…</p>
+        </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="calendar" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">PLAN YOUR SUPPORT</p>
+          <h2>Calendar</h2>
+        </div>
+      </div>
+
+      <article class="content-panel">
+        <p class="summary-text">Upcoming dates for your mentor group.</p>
+
+        <div class="upcoming-event">
+          <div class="event-date">
+            <span>OCT</span>
+            <strong>08</strong>
+          </div>
+          <div class="event-info">
+            <span class="event-type test">TEST</span>
+            <h4>Introduction to Biology</h4>
+            <p>09:00 · Main Campus</p>
+          </div>
+        </div>
+
+        <div class="upcoming-event">
+          <div class="event-date">
+            <span>OCT</span>
+            <strong>12</strong>
+          </div>
+          <div class="event-info">
+            <span class="event-type event">FYE EVENT</span>
+            <h4>First-year meet and greet</h4>
+            <p>14:00 · Student Centre</p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="updates" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">ANNOUNCEMENTS &amp; REMINDERS</p>
+          <h2>Updates</h2>
+        </div>
+      </div>
+
+      <article class="content-panel">
+        <p class="card-kicker">FYE TEAM · TODAY</p>
+        <h3>Welcome to the new mentor group</h3>
+        <p class="summary-text">
+          Your supervisor has assigned students to your mentor group. Please
+          introduce yourself and help them get settled.
+        </p>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="profile" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">YOUR DETAILS</p>
+          <h2>My profile</h2>
+        </div>
+      </div>
+
+      <article class="content-panel">
+        <p class="summary-text">
+          Add your faculty and programme, profile picture, short introduction,
+          and a WhatsApp group invite link for your assigned students.
+        </p>
+
+        <form id="mentor-profile-form" class="data-form">
+          <label for="profile-name">Name</label>
+          <input
+            id="profile-name"
+            type="text"
+            value="Lerato Mokoena"
+            required
+          >
+
+          <label for="profile-faculty">Faculty</label>
+          <select id="profile-faculty" required>
+            <option value="">Loading faculties…</option>
+          </select>
+
+          <label for="profile-programme">Programme</label>
+          <select id="profile-programme" required disabled>
+            <option value="">Choose a faculty first</option>
+          </select>
+
+          <label for="profile-intro">Short introduction</label>
+          <input
+            id="profile-intro"
+            type="text"
+            placeholder="A few words to introduce yourself"
+          >
+
+          <label for="profile-photo">Profile picture</label>
+          <input
+            id="profile-photo"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+          >
+
+          <div class="profile-preview-wrap">
+            <img
+              id="profile-preview"
+              class="profile-preview"
+              alt="Profile picture preview"
+              hidden
+            >
+            <span id="profile-initials" class="avatar large-avatar">LM</span>
+          </div>
+
+          <label for="whatsapp-link">WhatsApp group invite link</label>
+          <input
+            id="whatsapp-link"
+            type="url"
+            placeholder="https://chat.whatsapp.com/..."
+          >
+
+          <button class="form-action" type="submit">Save profile</button>
+          <p class="form-feedback" id="profile-feedback" role="status"></p>
+        </form>
+      </article>
+    </section>
+
+    <footer class="dashboard-footer">
+      <span>Growing together, one first year at a time.</span>
+      <span>FYE Hub · University of Mpumalanga</span>
+    </footer>
+  </main>
+</body>
+</html>

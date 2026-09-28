@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f2f6fc">
+  <title>Supervisor Dashboard | FYE Hub</title>
+  <link rel="stylesheet" href="student.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js" defer></script>
+  <script src="calendar.js" defer></script>
+  <script src="notices.js" defer></script>
+  <script src="supervisor.js" defer></script>
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="index.html">
+      <span class="brand-mark">✿</span>
+      <span>FYE <b>HUB</b></span>
+    </a>
+
+    <p class="menu-label">SUPERVISOR MENU</p>
+    <nav class="main-nav" aria-label="Supervisor navigation">
+      <a class="nav-link active" href="#overview" data-view="overview"><span>⌂</span> Overview</a>
+      <a class="nav-link" href="#students" data-view="students"><span>♧</span> Students</a>
+      <a class="nav-link" href="#mentors" data-view="mentors"><span>♡</span> Mentors</a>
+      <a class="nav-link" href="#assignments" data-view="assignments"><span>▦</span> Mentor assignments</a>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="support-note">
+        <span class="support-icon">✦</span>
+        <strong>Supporting success.</strong>
+        <p>Help every first-year student find their people.</p>
+      </div>
+      <a class="signout" id="signout-link" href="index.html">↪ <span>Sign out</span></a>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <p class="campus-label">UNIVERSITY OF MPUMALANGA</p>
+        <p class="page-label">Supervisor dashboard</p>
+      </div>
+      <div class="profile-chip">
+        <span class="avatar small-avatar" id="supervisor-initials">FY</span>
+        <span class="profile-name" id="supervisor-name">Supervisor</span>
+      </div>
+    </header>
+
+    <section class="page-view" data-page="overview">
+      <div class="welcome-banner">
+        <div class="welcome-copy">
+          <p class="welcome-kicker">FYE PROGRAMME MANAGEMENT</p>
+          <h1 id="welcome-heading">Welcome! <span class="wave">👋</span></h1>
+          <p>Review students and mentors, then assign students to eligible mentors.</p>
+          <button class="text-button" type="button" data-go="assignments">Manage assignments →</button>
+        </div>
+        <div class="banner-art" aria-hidden="true">
+          <span class="sun">☀</span><span class="art-heart">♡</span>
+          <span class="art-sparkle">✦</span><span class="art-circle"></span>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <div><p class="section-kicker">PROGRAMME AT A GLANCE</p><h2>Overview</h2></div>
+      </div>
+
+      <div class="support-grid">
+        <article class="mentor-card">
+          <p class="card-kicker">REGISTERED STUDENTS</p>
+          <h3 id="student-count">Loading…</h3>
+          <p class="summary-text">Students grouped by their saved faculty and programme.</p>
+          <button class="text-button" type="button" data-go="students">View students →</button>
+        </article>
+        <article class="next-card">
+          <p class="card-kicker">REGISTERED MENTORS</p>
+          <h3 id="mentor-count">Loading…</h3>
+          <p class="summary-text">Mentors with their saved faculty and programme.</p>
+          <button class="text-button" type="button" data-go="mentors">View mentors →</button>
+        </article>
+      </div>
+
+      <article class="content-panel">
+        <p class="card-kicker">ACTIVE MENTOR ASSIGNMENTS</p>
+        <h3 id="assignment-count">Loading…</h3>
+        <p class="summary-text">Only assignments currently active are counted.</p>
+        <button class="text-button" type="button" data-go="assignments">Manage assignments →</button>
+      </article>
+
+      <p class="form-feedback" id="dashboard-feedback" role="status"></p>
+    </section>
+
+    <section class="page-view" data-page="students" hidden>
+      <div class="section-heading page-title">
+        <div><p class="section-kicker">STUDENT DIRECTORY</p><h2>Students</h2></div>
+      </div>
+      <article class="content-panel">
+        <p class="summary-text">Students are listed with their faculty and programme from their profiles.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Mentor</th></tr></thead>
+            <tbody id="students-list"><tr><td colspan="5">Loading students…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="mentors" hidden>
+      <div class="section-heading page-title">
+        <div><p class="section-kicker">MENTOR DIRECTORY</p><h2>Mentors</h2></div>
+      </div>
+      <article class="content-panel">
+        <p class="summary-text">Mentors are listed with their faculty, programme, and current active student count.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Mentor</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Students</th><th>Capacity</th></tr></thead>
+            <tbody id="mentors-list"><tr><td colspan="6">Loading mentors…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="assignments" hidden>
+      <div class="section-heading page-title">
+        <div><p class="section-kicker">MATCH STUDENTS WITH MENTORS</p><h2>Mentor assignments</h2></div>
+      </div>
+
+      <article class="content-panel">
+        <p class="summary-text">
+          Choose a faculty and programme to see eligible mentors and unassigned students.
+          Each mentor can have up to 20 active students.
+        </p>
+
+        <div class="data-form">
+          <label for="assignment-faculty">Faculty</label>
+          <select id="assignment-faculty">
+            <option value="">Loading faculties…</option>
+          </select>
+
+          <label for="assignment-programme">Programme</label>
+          <select id="assignment-programme" disabled>
+            <option value="">Choose a faculty first</option>
+          </select>
+
+          <button class="form-action" id="start-assignment" type="button" disabled>
+            Start assignment
+          </button>
+        </div>
+
+        <div id="assignment-workflow" hidden>
+          <label for="assignment-mentor">Mentor</label>
+          <select id="assignment-mentor" disabled>
+            <option value="">Choose a programme first</option>
+          </select>
+          <p class="summary-text" id="mentor-capacity"></p>
+
+          <p class="card-kicker">UNASSIGNED STUDENTS</p>
+          <p class="summary-text">Select one or more students. Use the checkboxes to select multiple students.</p>
+          <div id="eligible-students" class="data-form">
+            <p class="summary-text">Choose a faculty and programme first.</p>
+          </div>
+
+          <button class="form-action" id="finish-assignment" type="button" disabled>
+            Finish assignment &amp; save proof as PDF
+          </button>
+        </div>
+
+        <p class="form-feedback" id="assignment-feedback" role="status"></p>
+      </article>
+
+      <article class="content-panel">
+        <p class="section-kicker">CURRENT ASSIGNMENTS</p>
+        <h3>Active student and mentor matches</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Student</th><th>Faculty</th><th>Programme</th><th>Mentor</th><th>Assigned</th></tr></thead>
+            <tbody id="assignment-list"><tr><td colspan="5">Loading assignments…</td></tr></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <footer class="dashboard-footer">
+      <span>Growing together, one first year at a time.</span>
+      <span>FYE Hub · University of Mpumalanga</span>
+    </footer>
+  </main>
+</body>
+</html>
