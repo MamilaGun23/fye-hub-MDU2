@@ -19,8 +19,7 @@
 <body>
   <aside class="sidebar">
     <a class="brand" href="index.html">
-      <span class="brand-mark">✿</span>
-      <span>FYE <b>HUB</b></span>
+      <span class="brand-wordmark">FYE <b>HUB</b></span>
     </a>
 
     <p class="menu-label">MENTOR MENU</p>
@@ -50,7 +49,7 @@
         <p>Thanks for helping new students find their way.</p>
       </div>
 
-      <a class="signout" href="index.html">↪ <span>Sign out</span></a>
+      <a class="signout" href="index.html"><span class="signout-arrow" aria-hidden="true">↪</span> <span>Sign out</span></a>
     </div>
   </aside>
 
@@ -84,7 +83,7 @@
             journey.
           </p>
           <button class="text-button" type="button" data-go="students">
-            View your students →
+            View your students <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </div>
 
@@ -112,7 +111,7 @@
             Your assigned students are listed in My students.
           </p>
           <button class="text-button" type="button" data-go="students">
-            Open student list →
+            Open student list <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </article>
 
@@ -123,7 +122,7 @@
             FYE event · 12 October · 14:00 · Student Centre
           </p>
           <button class="text-button" type="button" data-go="calendar">
-            Open calendar →
+            Open calendar <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </article>
       </div>
@@ -220,12 +219,24 @@
       </div>
 
       <article class="content-panel">
+        <header class="mentor-profile-header">
+          <div class="mentor-profile-portrait">
+            <img id="mentor-profile-header-photo" alt="Mentor profile picture" hidden>
+            <span id="mentor-profile-header-initials" class="avatar">LM</span>
+          </div>
+          <div class="mentor-profile-identity">
+            <p class="card-kicker">PEER MENTOR</p>
+            <h3 id="mentor-profile-header-name">Mentor</h3>
+            <p id="mentor-profile-header-details" class="summary-text">Add your faculty and programme.</p>
+          </div>
+        </header>
         <p class="summary-text">
-          Add your faculty and programme, profile picture, short introduction,
-          and a WhatsApp group invite link for your assigned students.
+          Your profile helps assigned students recognize you and find your contact details.
         </p>
 
-        <form id="mentor-profile-form" class="data-form">
+        <details id="mentor-profile-editor" class="mentor-profile-editor">
+          <summary>Edit profile</summary>
+          <form id="mentor-profile-form" class="data-form">
           <label for="profile-name">Name</label>
           <input
             id="profile-name"
@@ -275,9 +286,10 @@
             placeholder="https://chat.whatsapp.com/..."
           >
 
-          <button class="form-action" type="submit">Save profile</button>
-          <p class="form-feedback" id="profile-feedback" role="status"></p>
-        </form>
+            <button class="form-action" type="submit">Save profile</button>
+            <p class="form-feedback" id="profile-feedback" role="status"></p>
+          </form>
+        </details>
       </article>
     </section>
 

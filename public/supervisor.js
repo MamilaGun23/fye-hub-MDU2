@@ -24,7 +24,9 @@ const state = {
   selectedMentor: null
 };
 
-function showPage(pageName) {
+function showPage(pageName, updateHistory = true) {
+  if (![...pages].some((page) => page.dataset.page === pageName)) return;
+
   pages.forEach((page) => {
     page.hidden = page.dataset.page !== pageName;
   });
@@ -40,8 +42,21 @@ function showPage(pageName) {
     }
   });
 
+  if (updateHistory && history.state?.fyeDashboardView !== pageName) {
+    history.pushState({ fyeDashboardView: pageName }, '', `#${pageName}`);
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+const initialView = [...pages].some((page) => page.dataset.page === location.hash.slice(1))
+  ? location.hash.slice(1)
+  : 'overview';
+history.replaceState({ fyeDashboardView: initialView }, '', `#${initialView}`);
+showPage(initialView, false);
+window.addEventListener('popstate', (event) => {
+  showPage(event.state?.fyeDashboardView || 'overview', false);
+});
 
 navLinks.forEach((link) => {
   link.addEventListener('click', (event) => {
@@ -235,14 +250,20 @@ async function loadFaculties() {
 async function loadAllData() {
   const [
     profilesResult,
+    approvedApplicationsResult,
     facultiesResult,
     programmesResult,
     assignmentsResult
   ] = await Promise.all([
     db
       .from('profiles')
-      .select('id, email, full_name, role, faculty_id, programme_id')
+      .select('id, email, full_name, role, mentor_approval_status, faculty_id, programme_id')
       .in('role', ['student', 'mentor']),
+
+    db
+      .from('mentor_applications')
+      .select('applicant_id')
+      .eq('status', 'approved'),
 
     db
       .from('faculties')
@@ -259,8 +280,12 @@ async function loadAllData() {
       .select('student_id, mentor_id, assigned_at, ended_at')
   ]);
 
+  const approvalTableError = approvedApplicationsResult.error?.code === 'PGRST205'
+    ? null
+    : approvedApplicationsResult.error;
   const error = [
     profilesResult.error,
+    approvalTableError,
     facultiesResult.error,
     programmesResult.error,
     assignmentsResult.error
@@ -272,8 +297,16 @@ async function loadAllData() {
   state.programmes = programmesResult.data || [];
 
   const profiles = profilesResult.data || [];
-  state.students = profiles.filter((profile) => profile.role === 'student');
-  state.mentors = profiles.filter((profile) => profile.role === 'mentor');
+  const approvedMentorIds = new Set(
+    (approvedApplicationsResult.data || []).map((application) => application.applicant_id)
+  );
+  state.students = profiles.filter((profile) =>
+    profile.role === 'student' || profile.role === 'mentor'
+  );
+  state.mentors = profiles.filter((profile) =>
+    approvedMentorIds.has(profile.id)
+    || (profile.role === 'mentor' && profile.mentor_approval_status === 'approved')
+  );
   state.assignments = assignmentsResult.data || [];
 
   renderDirectories();

@@ -48,17 +48,6 @@ body {
   color: var(--blue);
 }
 
-.brand-mark {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-  background: #dce9f8;
-  color: #3269a8;
-  font-size: 23px;
-}
-
 .university {
   color: #738398;
   font-size: 13px;
@@ -533,13 +522,8 @@ footer b {
   color: #f8fafc;
 }
 
-.landing-page .brand b,
-.landing-page .brand-mark {
+.landing-page .brand b {
   color: #facc15;
-}
-
-.landing-page .brand-mark {
-  background: rgba(255, 255, 255, 0.12);
 }
 
 .landing-page .university {

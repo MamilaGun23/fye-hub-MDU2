@@ -30,8 +30,9 @@ function showLoginView() {
   signupForm.style.display = 'none';
 
   const role = selectedRole();
-  signupPrompt.style.display =
-    role === 'student' || role === 'mentor' ? 'block' : 'none';
+  signupPrompt.style.display = role === 'student' ? 'block' : 'none';
+  document.querySelector('#mentor-signin-help').style.display =
+    role === 'mentor' ? 'block' : 'none';
 
   signinPrompt.style.display = 'none';
   message.textContent = '';
@@ -40,36 +41,25 @@ function showLoginView() {
 
 function showSignupView() {
   const role = selectedRole();
-  const isStudent = role === 'student';
+  if (role !== 'student') return;
 
-  if (!isStudent && role !== 'mentor') return;
-
-  dialogTitle.textContent = isStudent
-    ? 'Create student account'
-    : 'Create mentor account';
+  dialogTitle.textContent = 'Create student account';
 
   loginForm.style.display = 'none';
   signupForm.style.display = 'grid';
   signupPrompt.style.display = 'none';
   signinPrompt.style.display = 'block';
-  studentSignupFields.hidden = !isStudent;
+  studentSignupFields.hidden = false;
 
-  document.querySelector('#signup-name').required = isStudent;
-  facultySelect.required = isStudent;
-  programmeSelect.required = isStudent;
-
-  signupButton.innerHTML = isStudent
-    ? 'Create student account <span aria-hidden="true">→</span>'
-    : 'Create mentor account <span aria-hidden="true">→</span>';
+  document.querySelector('#signup-name').required = true;
+  facultySelect.required = true;
+  programmeSelect.required = true;
+  signupButton.innerHTML = 'Create student account <span aria-hidden="true">→</span>';
 
   message.textContent = '';
 
-  if (isStudent) {
-    document.querySelector('#signup-name').focus();
-    loadFaculties();
-  } else {
-    document.querySelector('#signup-email').focus();
-  }
+  document.querySelector('#signup-name').focus();
+  loadFaculties();
 }
 
 document.querySelectorAll('.role-card').forEach((card) => {
@@ -218,13 +208,55 @@ loginForm.addEventListener('submit', async (event) => {
 
     const { data: profile, error: profileError } = await window.fyeSupabase
       .from('profiles')
-      .select('role')
+      .select('role, mentor_approval_status, is_active')
       .eq('id', signInData.user.id)
       .single();
 
     if (profileError || !profile) {
       await window.fyeSupabase.auth.signOut();
       message.textContent = 'We could not find a profile for this account.';
+      return;
+    }
+
+    if (profile.is_active === false) {
+      await window.fyeSupabase.auth.signOut();
+      message.textContent = 'This account is disabled. Contact your FYE administrator for assistance.';
+      return;
+    }
+
+    if (role === 'mentor') {
+      if (profile.role === 'mentor' && profile.mentor_approval_status === 'approved') {
+        window.location.replace(dashboardPages.mentor);
+        return;
+      }
+
+      if (profile.role === 'student' || profile.role === 'mentor') {
+        const { data: application, error: applicationError } = await window.fyeSupabase
+          .from('mentor_applications')
+          .select('status')
+          .eq('applicant_id', signInData.user.id)
+          .maybeSingle();
+
+        if (applicationError) {
+          if (profile.role === 'mentor') {
+            window.location.replace(dashboardPages.student);
+            return;
+          }
+          await window.fyeSupabase.auth.signOut();
+          message.textContent = 'Mentor application access is not available yet. Please contact your FYE coordinator.';
+          return;
+        }
+
+        window.location.replace(application?.status === 'approved'
+          || profile.mentor_approval_status === 'approved'
+          ? dashboardPages.mentor
+          : dashboardPages.student);
+        return;
+      }
+    }
+
+    if (role === 'student' && profile.role === 'mentor') {
+      window.location.replace(dashboardPages.student);
       return;
     }
 
@@ -235,7 +267,7 @@ loginForm.addEventListener('submit', async (event) => {
       return;
     }
 
-    window.location.href = dashboardPages[profile.role];
+    window.location.replace(dashboardPages[profile.role]);
   } catch (error) {
     console.error('Sign-in error:', error);
     message.textContent =
@@ -258,34 +290,29 @@ signupForm.addEventListener('submit', async (event) => {
 
   const role = selectedRole();
 
-  if (role !== 'student' && role !== 'mentor') {
-    message.textContent = 'Account creation is available for students and mentors.';
+  if (role !== 'student') {
+    message.textContent = 'Create a student account first, then apply to become a mentor from your dashboard.';
     return;
   }
 
-  const isStudent = role === 'student';
   const email = document.querySelector('#signup-email').value.trim();
   const password = document.querySelector('#signup-password').value;
 
   const metadata = {
-    role,
-    full_name: isStudent
-      ? document.querySelector('#signup-name').value.trim()
-      : ''
+    role: 'student',
+    full_name: document.querySelector('#signup-name').value.trim()
   };
 
-  if (isStudent) {
-    const facultyId = facultySelect.value;
-    const programmeId = programmeSelect.value;
+  const facultyId = facultySelect.value;
+  const programmeId = programmeSelect.value;
 
-    if (!facultyId || !programmeId) {
-      message.textContent = 'Please choose both your faculty and programme.';
-      return;
-    }
-
-    metadata.faculty_id = Number(facultyId);
-    metadata.programme_id = Number(programmeId);
+  if (!facultyId || !programmeId) {
+    message.textContent = 'Please choose both your faculty and programme.';
+    return;
   }
+
+  metadata.faculty_id = Number(facultyId);
+  metadata.programme_id = Number(programmeId);
 
   signupButton.disabled = true;
   signupButton.textContent = 'Creating account…';
@@ -304,7 +331,7 @@ signupForm.addEventListener('submit', async (event) => {
     }
 
     if (data.session) {
-      window.location.href = dashboardPages[role];
+      window.location.replace(dashboardPages[role]);
       return;
     }
 
@@ -321,8 +348,6 @@ signupForm.addEventListener('submit', async (event) => {
       'Something went wrong while creating your account.';
   } finally {
     signupButton.disabled = false;
-    signupButton.innerHTML = isStudent
-      ? 'Create student account <span aria-hidden="true">→</span>'
-      : 'Create mentor account <span aria-hidden="true">→</span>';
+    signupButton.innerHTML = 'Create student account <span aria-hidden="true">→</span>';
   }
 });

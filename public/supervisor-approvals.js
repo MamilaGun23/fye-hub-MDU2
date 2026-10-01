@@ -33,101 +33,151 @@
     return true;
   }
 
-  async function reviewMentor(mentor, decision, button) {
-    if (decision === 'rejected' && !window.confirm(
-      `Decline mentor registration for ${mentor.full_name || mentor.email}?`
-    )) return;
+  async function reviewApplication(application, applicant, decision, button) {
+    let reason = '';
+    if (decision === 'declined') {
+      reason = window.prompt(
+        `Why are you declining ${applicant.full_name || applicant.email}'s application?`
+      );
+      if (reason === null) return;
+      if (!reason.trim()) {
+        feedback.textContent = 'Enter a reason before declining the application.';
+        return;
+      }
+    }
 
     button.disabled = true;
     feedback.textContent = decision === 'approved'
-      ? 'Approving mentor…'
-      : 'Declining mentor…';
+      ? 'Approving application…'
+      : 'Declining application…';
 
-    const { error } = await db.rpc('review_mentor_approval', {
-      p_mentor_id: mentor.id,
-      p_decision: decision
+    const { error } = await db.rpc('review_mentor_application', {
+      p_application_id: application.id,
+      p_decision: decision,
+      p_reason: reason
     });
 
     if (error) {
-      console.error('Could not update mentor approval:', error);
-      feedback.textContent = `Could not update approval: ${error.message}`;
+      console.error('Could not update mentor application:', error);
+      feedback.textContent = `Could not update application: ${error.message}`;
       button.disabled = false;
       return;
     }
 
     feedback.textContent = decision === 'approved'
-      ? 'Mentor approved. They can now receive student assignments.'
-      : 'Mentor declined. They cannot receive assignments.';
-    await loadPendingMentors();
+      ? 'Application approved. The student can now use mentor features and receive assignments.'
+      : 'Application declined. The student can review the reason and resubmit.';
+    await loadMentorApplications();
   }
 
-  async function loadPendingMentors() {
-    list.innerHTML = '<tr><td colspan="6">Loading mentor profiles…</td></tr>';
+  async function loadMentorApplications() {
+    list.innerHTML = '<tr><td colspan="8">Loading mentor applications…</td></tr>';
 
-    const [facultyResult, programmeResult, mentorResult] = await Promise.all([
-      db.from('faculties').select('id, name'),
-      db.from('programmes').select('id, name'),
-      db.from('profiles')
-        .select('id, full_name, email, faculty_id, programme_id, mentor_approval_status')
-        .eq('role', 'mentor')
-        .in('mentor_approval_status', ['pending', 'rejected'])
-        .order('full_name')
-    ]);
+    const { data: applications, error: applicationError } = await db
+      .from('mentor_applications')
+      .select('id, applicant_id, student_number, study_year, previous_academic_year, academic_record_path, status, is_legacy, created_at')
+      .in('status', ['pending', 'declined'])
+      .order('created_at', { ascending: false });
 
-    const error = facultyResult.error || programmeResult.error || mentorResult.error;
-    if (error) {
-      console.error('Could not load mentor approvals:', error);
-      list.innerHTML = '<tr><td colspan="6">Mentor review list unavailable.</td></tr>';
-      feedback.textContent = `Could not load mentor reviews: ${error.message}`;
+    if (applicationError) {
+      console.error('Could not load mentor applications:', applicationError);
+      list.innerHTML = '<tr><td colspan="8">Mentor applications are unavailable.</td></tr>';
+      feedback.textContent = applicationError.code === 'PGRST205'
+        ? 'Apply database/20261002000000_mentor_application_workflow.sql in Supabase, then refresh the schema cache.'
+        : `Could not load mentor applications: ${applicationError.message}`;
       return;
     }
 
-    const facultyNames = new Map((facultyResult.data || []).map((item) => [String(item.id), item.name]));
+    const applicantIds = [...new Set((applications || []).map((item) => item.applicant_id))];
+    const [profilesResult, programmeResult] = await Promise.all([
+      applicantIds.length
+        ? db.from('profiles').select('id, full_name, email, programme_id').in('id', applicantIds)
+        : Promise.resolve({ data: [], error: null }),
+      db.from('programmes').select('id, name')
+    ]);
+
+    const error = profilesResult.error || programmeResult.error;
+    if (error) {
+      console.error('Could not load mentor application details:', error);
+      list.innerHTML = '<tr><td colspan="8">Mentor application details are unavailable.</td></tr>';
+      feedback.textContent = `Could not load application details: ${error.message}`;
+      return;
+    }
+
     const programmeNames = new Map((programmeResult.data || []).map((item) => [String(item.id), item.name]));
-    const mentors = mentorResult.data || [];
+    const applicants = new Map((profilesResult.data || []).map((item) => [item.id, item]));
     list.replaceChildren();
 
-    if (!mentors.length) {
+    if (!applications?.length) {
       const row = document.createElement('tr');
       const cell = document.createElement('td');
-      cell.colSpan = 6;
-      cell.textContent = 'No mentors are waiting for review.';
+      cell.colSpan = 8;
+      cell.textContent = 'No mentor applications are waiting for review.';
       row.appendChild(cell);
       list.appendChild(row);
       return;
     }
 
-    for (const mentor of mentors) {
+    for (const application of applications) {
+      const applicant = applicants.get(application.applicant_id) || {};
       const row = document.createElement('tr');
-      appendCell(row, mentor.full_name || 'Name not provided');
-      appendCell(row, mentor.email || 'Email not provided');
-      appendCell(row, facultyNames.get(String(mentor.faculty_id)) || 'Not selected');
-      appendCell(row, programmeNames.get(String(mentor.programme_id)) || 'Not selected');
-      appendCell(row, mentor.mentor_approval_status === 'rejected' ? 'Declined' : 'Pending');
+      appendCell(row, [applicant.full_name || 'Name not provided', applicant.email || 'Email not provided'].join(' · '));
+      appendCell(row, application.student_number || (application.is_legacy ? 'Legacy record' : 'Not provided'));
+      appendCell(row, programmeNames.get(String(applicant.programme_id)) || 'Not selected');
+      appendCell(row, application.study_year ? `Year ${application.study_year}` : 'Not provided');
+      appendCell(row, application.previous_academic_year || 'Not provided');
+      appendCell(row, application.status === 'declined' ? 'Declined' : 'Pending');
+
+      const recordCell = document.createElement('td');
+      if (application.academic_record_path) {
+        const { data: signedRecord, error: signedError } = await db.storage
+          .from('mentor-academic-records')
+          .createSignedUrl(application.academic_record_path, 300);
+
+        if (!signedError && signedRecord?.signedUrl) {
+          const link = document.createElement('a');
+          link.href = signedRecord.signedUrl;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.textContent = 'View PDF';
+          recordCell.appendChild(link);
+        } else {
+          recordCell.textContent = 'Record unavailable';
+        }
+      } else {
+        recordCell.textContent = application.is_legacy
+          ? 'Legacy application; verify record manually'
+          : 'Not provided';
+      }
+      row.appendChild(recordCell);
 
       const actions = document.createElement('td');
       actions.className = 'mentor-approval-actions';
 
-      const approveButton = document.createElement('button');
-      approveButton.type = 'button';
-      approveButton.className = 'mentor-approve-button';
-      approveButton.textContent = 'Approve';
-      approveButton.addEventListener('click', () => reviewMentor(mentor, 'approved', approveButton));
+      if (application.status === 'pending') {
+        const approveButton = document.createElement('button');
+        approveButton.type = 'button';
+        approveButton.className = 'mentor-approve-button';
+        approveButton.textContent = 'Approve';
+        approveButton.addEventListener('click', () => reviewApplication(application, applicant, 'approved', approveButton));
 
-      const rejectButton = document.createElement('button');
-      rejectButton.type = 'button';
-      rejectButton.className = 'mentor-reject-button';
-      rejectButton.textContent = 'Decline';
-      rejectButton.addEventListener('click', () => reviewMentor(mentor, 'rejected', rejectButton));
+        const declineButton = document.createElement('button');
+        declineButton.type = 'button';
+        declineButton.className = 'mentor-reject-button';
+        declineButton.textContent = 'Decline';
+        declineButton.addEventListener('click', () => reviewApplication(application, applicant, 'declined', declineButton));
 
-      actions.append(approveButton, rejectButton);
+        actions.append(approveButton, declineButton);
+      } else {
+        actions.textContent = 'Awaiting resubmission';
+      }
       row.appendChild(actions);
       list.appendChild(row);
     }
   }
 
   document.querySelector('#approvals-refresh')
-    .addEventListener('click', loadPendingMentors);
+    .addEventListener('click', loadMentorApplications);
 
   const style = document.createElement('style');
   style.textContent = `
@@ -142,7 +192,7 @@
   document.head.appendChild(style);
 
   async function init() {
-    if (await verifySupervisor()) await loadPendingMentors();
+    if (await verifySupervisor()) await loadMentorApplications();
   }
 
   init();

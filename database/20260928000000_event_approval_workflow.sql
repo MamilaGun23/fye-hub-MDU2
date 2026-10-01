@@ -315,7 +315,8 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_approved_event_for_attendance(p_qr_token TEXT)
+DROP FUNCTION IF EXISTS public.get_approved_event_for_attendance(TEXT);
+CREATE FUNCTION public.get_approved_event_for_attendance(p_qr_token TEXT)
 RETURNS TABLE (
   title VARCHAR,
   purpose TEXT,

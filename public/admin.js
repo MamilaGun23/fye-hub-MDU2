@@ -15,7 +15,9 @@
   let facultyNames = new Map();
   let programmeNames = new Map();
 
-  function showPage(pageName) {
+  function showPage(pageName, updateHistory = true) {
+    if (![...pages].some((page) => page.dataset.page === pageName)) return;
+
     pages.forEach((page) => {
       page.hidden = page.dataset.page !== pageName;
     });
@@ -31,8 +33,21 @@
       }
     });
 
+    if (updateHistory && history.state?.fyeDashboardView !== pageName) {
+      history.pushState({ fyeDashboardView: pageName }, '', `#${pageName}`);
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
+  const initialView = [...pages].some((page) => page.dataset.page === location.hash.slice(1))
+    ? location.hash.slice(1)
+    : 'overview';
+  history.replaceState({ fyeDashboardView: initialView }, '', `#${initialView}`);
+  showPage(initialView, false);
+  window.addEventListener('popstate', (event) => {
+    showPage(event.state?.fyeDashboardView || 'overview', false);
+  });
 
   navLinks.forEach((link) => {
     link.addEventListener('click', (event) => {
@@ -90,7 +105,7 @@
       const row = document.createElement('tr');
       const cell = document.createElement('td');
 
-      cell.colSpan = 5;
+      cell.colSpan = 7;
       cell.textContent = profiles.length
         ? 'No profiles match these filters.'
         : 'No profiles were found.';
@@ -117,6 +132,45 @@
         row,
         programmeNames.get(String(profile.programme_id)) || 'Not selected'
       );
+
+      const isActive = profile.is_active !== false;
+      addCell(row, isActive ? 'Active' : 'Disabled');
+
+      const actionCell = document.createElement('td');
+      if (['student', 'mentor'].includes(profile.role)) {
+        const actionButton = document.createElement('button');
+        actionButton.type = 'button';
+        actionButton.className = isActive ? 'admin-account-disable' : 'admin-account-enable';
+        actionButton.textContent = isActive ? 'Disable' : 'Reactivate';
+        actionButton.addEventListener('click', async () => {
+          const nextState = !isActive;
+          const actionLabel = nextState ? 'reactivate' : 'disable';
+          if (!window.confirm(`Are you sure you want to ${actionLabel} ${profile.full_name || profile.email}?`)) return;
+
+          actionButton.disabled = true;
+          userFeedback.textContent = `${nextState ? 'Reactivating' : 'Disabling'} account…`;
+          const { error } = await db.rpc('set_profile_active', {
+            p_profile_id: profile.id,
+            p_is_active: nextState
+          });
+
+          if (error) {
+            console.error('Could not update account status:', error);
+            userFeedback.textContent = `Could not update account status: ${error.message}`;
+            actionButton.disabled = false;
+            return;
+          }
+
+          profile.is_active = nextState;
+          userFeedback.textContent = `${profile.full_name || profile.email} ${nextState ? 'reactivated' : 'disabled'}.`;
+          renderProfiles();
+          await loadAnalytics();
+        });
+        actionCell.appendChild(actionButton);
+      } else {
+        actionCell.textContent = 'Staff account';
+      }
+      row.appendChild(actionCell);
 
       userList.appendChild(row);
     }
@@ -206,16 +260,90 @@
       `${counts.admin || 0} admins`;
   }
 
+  function renderEventChart(monthlyEvents, periodValue) {
+    const chart = document.querySelector('#analytics-event-chart');
+    chart.replaceChildren();
+
+    const now = new Date();
+    const months = [];
+    const monthCount = periodValue === 'all'
+      ? 12
+      : Math.max(1, Math.ceil(Number(periodValue) / 30));
+    for (let offset = monthCount - 1; offset >= 0; offset -= 1) {
+      months.push(new Date(now.getFullYear(), now.getMonth() - offset, 1));
+    }
+
+    const countsByMonth = new Map(months.map((month) => [
+      `${month.getFullYear()}-${month.getMonth()}`,
+      0
+    ]));
+    for (const eventMonth of monthlyEvents) {
+      const date = new Date(eventMonth.month);
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      if (countsByMonth.has(key)) countsByMonth.set(key, Number(eventMonth.count) || 0);
+    }
+
+    const maxCount = Math.max(1, ...countsByMonth.values());
+    for (const [key, count] of countsByMonth) {
+      const [year, month] = key.split('-').map(Number);
+      const column = document.createElement('div');
+      column.className = 'admin-event-chart-column';
+      column.setAttribute('aria-label', `${count} events in ${new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1))}`);
+      const value = document.createElement('span');
+      value.className = 'admin-event-chart-value';
+      value.textContent = String(count);
+      const track = document.createElement('div');
+      track.className = 'admin-event-chart-track';
+      const bar = document.createElement('span');
+      bar.className = 'admin-event-chart-bar';
+      bar.style.height = `${Math.max(5, (count / maxCount) * 100)}%`;
+      track.appendChild(bar);
+      const label = document.createElement('small');
+      label.textContent = new Intl.DateTimeFormat('en', { month: 'short' })
+        .format(new Date(year, month, 1));
+      column.append(value, track, label);
+      chart.appendChild(column);
+    }
+  }
+
+  async function loadAnalytics() {
+    const feedback = document.querySelector('#analytics-feedback');
+    feedback.textContent = 'Loading platform analytics…';
+    const period = document.querySelector('#analytics-period').value;
+    const { data: analytics, error } = await db.rpc('get_admin_analytics', {
+      p_period_days: period === 'all' ? 0 : Number(period)
+    });
+
+    if (error || !analytics) {
+      console.error('Could not load analytics:', error);
+      feedback.textContent = error
+        ? `Could not load analytics: ${error.message}`
+        : 'Analytics are unavailable right now.';
+      return;
+    }
+
+    document.querySelector('#analytics-students').textContent = String(analytics.active_students || 0);
+    document.querySelector('#analytics-mentors').textContent = String(analytics.active_mentors || 0);
+    document.querySelector('#analytics-events').textContent = String(analytics.events_in_period || 0);
+    document.querySelector('#analytics-upcoming').textContent = String(analytics.upcoming_events || 0);
+    document.querySelector('#analytics-assignments').textContent = String(analytics.active_assignments || 0);
+    document.querySelector('#analytics-disabled').textContent = String(analytics.disabled_profiles || 0);
+    document.querySelector('#analytics-notices').textContent = String(analytics.active_notices || 0);
+    document.querySelector('#analytics-event-total').textContent = `${analytics.events_in_period || 0} events in selected period`;
+    renderEventChart(analytics.events_by_month || [], period);
+    feedback.textContent = '';
+  }
+
   async function loadDashboardData() {
     userFeedback.textContent = 'Loading profiles…';
     userList.innerHTML =
-      '<tr><td colspan="5">Loading profiles…</td></tr>';
+      '<tr><td colspan="7">Loading profiles…</td></tr>';
 
     const [profileResult, facultyResult, programmeResult] =
       await Promise.all([
         db
           .from('profiles')
-          .select('id, email, full_name, role, faculty_id, programme_id')
+          .select('id, email, full_name, role, faculty_id, programme_id, is_active')
           .order('full_name')
           .range(0, 1999),
 
@@ -235,7 +363,7 @@
       userFeedback.textContent =
         `Could not load profiles: ${profileResult.error.message}`;
       userList.innerHTML =
-        '<tr><td colspan="5">Profile list unavailable.</td></tr>';
+        '<tr><td colspan="7">Profile list unavailable.</td></tr>';
       return;
     }
 
@@ -299,11 +427,11 @@
 
     const { data: profile, error: profileError } = await db
       .from('profiles')
-      .select('full_name, role')
+      .select('full_name, role, is_active')
       .eq('id', authData.user.id)
       .maybeSingle();
 
-    if (profileError || !profile || profile.role !== 'admin') {
+    if (profileError || !profile || profile.role !== 'admin' || profile.is_active === false) {
       document.querySelector('#admin-profile-name').textContent =
         'Access not available';
 
@@ -330,6 +458,7 @@
         .join('') || 'A';
 
     await loadDashboardData();
+    await loadAnalytics();
   }
 
   searchInput.addEventListener('input', renderProfiles);
@@ -345,6 +474,12 @@
   document
     .querySelector('#users-refresh')
     .addEventListener('click', loadDashboardData);
+
+  document.querySelector('#analytics-period').addEventListener('change', loadAnalytics);
+  document.querySelector('#analytics-refresh').addEventListener('click', async () => {
+    await loadDashboardData();
+    await loadAnalytics();
+  });
 
   const style = document.createElement('style');
   style.textContent = `

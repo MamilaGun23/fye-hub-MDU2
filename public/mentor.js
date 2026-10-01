@@ -5,6 +5,10 @@ const profileForm = document.querySelector('#mentor-profile-form');
 const photoInput = document.querySelector('#profile-photo');
 const photoPreview = document.querySelector('#profile-preview');
 const initials = document.querySelector('#profile-initials');
+const profileHeaderPhoto = document.querySelector('#mentor-profile-header-photo');
+const profileHeaderInitials = document.querySelector('#mentor-profile-header-initials');
+const profileHeaderName = document.querySelector('#mentor-profile-header-name');
+const profileHeaderDetails = document.querySelector('#mentor-profile-header-details');
 const feedback = document.querySelector('#profile-feedback');
 const facultySelect = document.querySelector('#profile-faculty');
 const programmeSelect = document.querySelector('#profile-programme');
@@ -14,7 +18,9 @@ const studentCount = document.querySelector('#mentor-student-count');
 let currentUser = null;
 let currentProfile = null;
 
-function showPage(pageName) {
+function showPage(pageName, updateHistory = true) {
+  if (![...pages].some((page) => page.dataset.page === pageName)) return;
+
   pages.forEach((page) => {
     page.hidden = page.dataset.page !== pageName;
   });
@@ -30,8 +36,21 @@ function showPage(pageName) {
     }
   });
 
+  if (updateHistory && history.state?.fyeDashboardView !== pageName) {
+    history.pushState({ fyeDashboardView: pageName }, '', `#${pageName}`);
+  }
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
+
+const initialView = [...pages].some((page) => page.dataset.page === location.hash.slice(1))
+  ? location.hash.slice(1)
+  : 'overview';
+history.replaceState({ fyeDashboardView: initialView }, '', `#${initialView}`);
+showPage(initialView, false);
+window.addEventListener('popstate', (event) => {
+  showPage(event.state?.fyeDashboardView || 'overview', false);
+});
 
 navLinks.forEach((link) => {
   link.addEventListener('click', (event) => {
@@ -49,10 +68,16 @@ function showPhoto(url) {
     photoPreview.src = url;
     photoPreview.hidden = false;
     initials.hidden = true;
+    profileHeaderPhoto.src = url;
+    profileHeaderPhoto.hidden = false;
+    profileHeaderInitials.hidden = true;
   } else {
     photoPreview.removeAttribute('src');
     photoPreview.hidden = true;
     initials.hidden = false;
+    profileHeaderPhoto.removeAttribute('src');
+    profileHeaderPhoto.hidden = true;
+    profileHeaderInitials.hidden = false;
   }
 }
 
@@ -76,6 +101,9 @@ function updateMentorName(fullName) {
   if (nameDisplay) {
     nameDisplay.textContent = name;
   }
+  if (profileHeaderName) {
+    profileHeaderName.textContent = name;
+  }
 
   if (headerAvatar) {
     headerAvatar.textContent = getInitials(name);
@@ -88,6 +116,18 @@ function updateMentorName(fullName) {
   if (initials) {
     initials.textContent = getInitials(name);
   }
+  if (profileHeaderInitials) {
+    profileHeaderInitials.textContent = getInitials(name);
+  }
+}
+
+function updateMentorProfileDetails() {
+  if (!profileHeaderDetails) return;
+  const faculty = facultySelect.selectedOptions[0]?.textContent;
+  const programme = programmeSelect.selectedOptions[0]?.textContent;
+  profileHeaderDetails.textContent = [programme, faculty]
+    .filter((value) => value && !value.startsWith('Choose'))
+    .join(' · ') || 'Peer mentor';
 }
 
 function renderAssignedStudents(students, faculties, programmes) {
@@ -180,7 +220,7 @@ async function loadAssignedStudents() {
     .from('profiles')
     .select('id, full_name, email, faculty_id, programme_id')
     .in('id', studentIds)
-    .eq('role', 'student')
+    .in('role', ['student', 'mentor'])
     .order('full_name');
 
   if (studentsError) {
@@ -325,6 +365,7 @@ async function loadProgrammes(facultyId, selectedProgrammeId = '') {
 facultySelect.addEventListener('change', async () => {
   feedback.textContent = '';
   await loadProgrammes(facultySelect.value);
+  updateMentorProfileDetails();
 });
 
 async function loadProfile() {
@@ -346,7 +387,7 @@ async function loadProfile() {
   const { data: profile, error: profileError } = await fyeClient
     .from('profiles')
     .select(
-      'full_name, role, faculty_id, programme_id, bio, avatar_path, whatsapp_group_link'
+      'full_name, role, mentor_approval_status, is_active, faculty_id, programme_id, bio, avatar_path, whatsapp_group_link'
     )
     .eq('id', currentUser.id)
     .single();
@@ -358,8 +399,33 @@ async function loadProfile() {
     return;
   }
 
-  if (profile.role !== 'mentor') {
-    feedback.textContent = 'This account does not have the Mentor role.';
+  if (profile.is_active === false) {
+    await fyeClient.auth.signOut();
+    window.location.replace('index.html');
+    return;
+  }
+
+  let approved = profile.role === 'mentor'
+    && profile.mentor_approval_status === 'approved';
+
+  if (!approved) {
+    const { data: application, error: applicationError } = await fyeClient
+      .from('mentor_applications')
+      .select('status')
+      .eq('applicant_id', currentUser.id)
+      .maybeSingle();
+
+    if (applicationError) {
+      console.error('Could not verify mentor approval:', applicationError);
+      feedback.textContent = 'Could not verify mentor approval. Please return to the student dashboard and try again.';
+      return;
+    }
+    approved = application?.status === 'approved';
+  }
+
+  if (!approved) {
+    feedback.textContent = 'Mentor access requires an approved application. Returning to your student dashboard…';
+    window.location.replace('student.html');
     return;
   }
 
@@ -376,6 +442,7 @@ async function loadProfile() {
   if (facultiesLoaded && profile.faculty_id) {
     await loadProgrammes(profile.faculty_id, profile.programme_id);
   }
+  updateMentorProfileDetails();
 
   if (profile.avatar_path) {
     const { data: photoData, error: photoError } = await fyeClient.storage
@@ -491,6 +558,7 @@ profileForm.addEventListener('submit', async (event) => {
     };
 
     updateMentorName(name);
+    updateMentorProfileDetails();
 
     if (avatarPath) {
       const { data: photoData } = await fyeClient.storage

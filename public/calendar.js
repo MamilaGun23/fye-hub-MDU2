@@ -4,7 +4,8 @@
 
   const fileName = location.pathname.split('/').pop().toLowerCase();
   const isSupervisorPage = fileName === 'supervisor.html';
-  const eventManagementLabel = isSupervisorPage ? 'Event management' : 'Calendar';
+  const isMentorDashboard = fileName === 'mentor.html';
+  const eventManagementLabel = isSupervisorPage ? 'Event calendar' : 'Calendar';
 
   function installCalendarPage() {
     const nav = document.querySelector('.main-nav');
@@ -65,8 +66,10 @@
               <label for="calendar-event-description">Purpose</label>
               <textarea id="calendar-event-description" rows="3" maxlength="500"
                 placeholder="What should attendees learn or achieve?" required></textarea>
-              <label for="calendar-event-time">Time</label>
+              <label for="calendar-event-time">Start time</label>
               <input id="calendar-event-time" type="time" required>
+              <label for="calendar-event-end-time" hidden>End time (optional)</label>
+              <input id="calendar-event-end-time" type="time" hidden>
               <label for="calendar-event-venue">Venue</label>
               <input id="calendar-event-venue" type="text" maxlength="200"
                 placeholder="Lecture Hall A" required>
@@ -88,7 +91,7 @@
     style.textContent = `
       .fye-calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px;flex-wrap:wrap}
       .fye-calendar-toolbar h3{margin:0 auto;text-align:center;flex:1}
-      .fye-calendar-toolbar button{border:0;border-radius:10px;padding:10px 14px;color:#245c96;background:#edf3fa;font:inherit;cursor:pointer}
+        .fye-calendar-toolbar button{display:flex;align-items:center;justify-content:center;min-width:44px;min-height:44px;border:1px solid #cbd5e1;border-radius:12px;padding:8px;color:#1a2a6c;background:#fff;font:800 18px 'DM Sans',sans-serif;cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .12s ease}
       .fye-calendar-weekdays,.fye-calendar-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;text-align:center}
       .fye-calendar-weekdays{margin-bottom:8px;color:#65809f;font-size:.82rem;font-weight:700}
       .fye-calendar-legend{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:#65809f;font-size:.82rem}
@@ -96,18 +99,18 @@
       .fye-calendar-date,.fye-calendar-empty{min-height:46px}
       .fye-calendar-date{position:relative;border:1px solid #e0e8f1;border-radius:10px;background:white;color:#1e3652;font:inherit;cursor:pointer}
       .fye-calendar-date:hover{background:#edf4fc}
-      .fye-calendar-date.is-today{border-color:#3973b6;font-weight:700}
-      .fye-calendar-date.is-selected{background:#3973b6;color:white}
+      .fye-calendar-date.is-today{border-color:#1a2a6c;font-weight:700}
+      .fye-calendar-date.is-selected{background:#1a2a6c;color:white}
       .fye-calendar-date.has-events:after{position:absolute;bottom:5px;left:50%;width:5px;height:5px;border-radius:50%;background:#e4a93b;content:"";transform:translateX(-50%)}
       .fye-calendar-date.is-selected.has-events:after{background:white}
       .fye-calendar-date.has-events{border:2px solid #d89b28;background:#fff1cc;color:#704b00;font-weight:700;box-shadow:inset 0 0 0 1px rgba(216,155,40,.12)}
       .fye-calendar-date.has-events:hover{background:#ffe6a6}
-      .fye-calendar-date.is-selected.has-events{border:2px solid #d89b28;background:#3973b6;color:white;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
+      .fye-calendar-date.is-selected.has-events{border:2px solid #d89b28;background:#1a2a6c;color:white;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
       .fye-calendar-day-panel{margin-top:24px;padding-top:18px;border-top:1px solid #e4ebf3}
       .fye-calendar-day-panel h3{margin-top:0}
       .fye-calendar-event{margin-top:12px;padding:14px;border:1px solid #e0e8f1;border-radius:12px;background:#f8fafd}
       .fye-calendar-event h4,.fye-calendar-event p{margin:6px 0}
-      .fye-calendar-event-type{color:#3973b6;font-size:.78rem;font-weight:700;text-transform:uppercase}
+      .fye-calendar-event-type{color:#1a2a6c;font-size:.82rem;font-weight:700;text-transform:uppercase}
       #calendar-event-form{margin-top:16px}
       #calendar-event-form[hidden],#calendar-add-event[hidden]{display:none!important}
       #calendar-event-form textarea{box-sizing:border-box;width:100%;resize:vertical}
@@ -126,6 +129,8 @@
   const selectedDateLabel = document.querySelector('#calendar-selected-date');
   const addEventButton = document.querySelector('#calendar-add-event');
   const eventForm = document.querySelector('#calendar-event-form');
+  const endTimeInput = document.querySelector('#calendar-event-end-time');
+  const endTimeLabel = document.querySelector('label[for="calendar-event-end-time"]');
   const eventList = document.querySelector('#calendar-day-events');
   const feedback = document.querySelector('#calendar-feedback');
 
@@ -164,6 +169,7 @@
     for (const item of events) {
       const card = document.createElement('article');
       card.className = 'fye-calendar-event';
+      card.dataset.eventId = String(item.id);
       const type = document.createElement('p');
       type.className = 'fye-calendar-event-type';
       type.textContent = item.audience === 'mentor_group' ? 'Mentor educational event' : 'UMP event';
@@ -188,6 +194,8 @@
     addEventButton.textContent = role === 'mentor'
       ? 'Request event approval'
       : 'Add event';
+    endTimeLabel.hidden = role !== 'supervisor';
+    endTimeInput.hidden = role !== 'supervisor';
     eventForm.hidden = true;
     eventForm.reset();
     feedback.textContent = '';
@@ -239,7 +247,7 @@
 
     const { data, error } = await db
       .from('calendar_events')
-      .select('id, title, event_type, description, starts_at, audience, created_by')
+      .select('id, title, event_type, description, starts_at, ends_at, location, audience, created_by, event_status')
       .gte('starts_at', start.toISOString())
       .lt('starts_at', end.toISOString())
       .order('starts_at');
@@ -249,7 +257,9 @@
       feedback.textContent = `Could not load events: ${error.message}`;
       monthEvents = [];
     } else {
-      monthEvents = data || [];
+      monthEvents = (data || []).filter((item) =>
+        role === 'supervisor' || item.event_status === 'scheduled'
+      );
       feedback.textContent = '';
     }
 
@@ -258,6 +268,37 @@
   }
 
   window.addEventListener('fye:calendar-refresh', loadMonthEvents);
+
+  window.addEventListener('fye:open-calendar-event', async (event) => {
+    const eventId = String(event.detail?.id || '');
+    if (!eventId) return;
+
+    const { data: selectedEvent, error } = await db
+      .from('calendar_events')
+      .select('id, title, event_type, description, starts_at, ends_at, location, audience, created_by, event_status')
+      .eq('id', eventId)
+      .maybeSingle();
+
+    if (error || !selectedEvent || selectedEvent.event_status !== 'scheduled') {
+      feedback.textContent = 'This event is no longer scheduled. Refresh the homepage to see the next event.';
+      return;
+    }
+
+    const eventDate = new Date(selectedEvent.starts_at);
+    currentMonth = new Date(eventDate.getFullYear(), eventDate.getMonth(), 1);
+    selectedDate = null;
+    await loadMonthEvents();
+
+    if (!monthEvents.some((item) => String(item.id) === eventId)) {
+      monthEvents.push(selectedEvent);
+      renderCalendar();
+    }
+
+    selectDate(eventDate);
+    const eventCard = [...eventList.querySelectorAll('.fye-calendar-event')]
+      .find((card) => card.dataset.eventId === eventId);
+    eventCard?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
 
   document.querySelector('#calendar-previous').addEventListener('click', async () => {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
@@ -312,7 +353,7 @@
     saveButton.textContent = 'Saving…';
 
     try {
-      const { error } = mentorEvent
+      const result = mentorEvent
         ? await db.rpc('create_event_request', {
             p_title: title,
             p_purpose: description,
@@ -320,25 +361,27 @@
             p_event_time: eventTime,
             p_venue: venue
           })
-        : await db.from('calendar_events').insert({
-            title,
-            event_type: 'event',
-            description,
-            starts_at: startsAt.toISOString(),
-            location: venue,
-            created_by: user.id,
-            audience: 'university'
+        : await db.rpc('create_supervisor_event', {
+            p_title: title,
+            p_description: description,
+            p_starts_at: startsAt.toISOString(),
+            p_ends_at: endTimeInput.value
+              ? new Date(`${dateKey(selectedDate)}T${endTimeInput.value}`).toISOString()
+              : null,
+            p_venue: venue
           });
 
+      const { error } = result;
       if (error) throw error;
       feedback.textContent = mentorEvent
         ? 'Your event request was sent to the supervisor for approval.'
-        : 'Event saved to the shared calendar.';
+        : 'Event saved. Students have been notified and reminders are scheduled.';
       eventForm.reset();
       eventForm.hidden = true;
       if (mentorEvent) {
         window.dispatchEvent(new CustomEvent('fye:event-request-created'));
       }
+      window.dispatchEvent(new CustomEvent('fye:calendar-refresh'));
       await loadMonthEvents();
     } catch (error) {
       console.error('Could not save calendar event:', error);
@@ -347,7 +390,7 @@
         || error.message?.includes('Could not find the function public.create_event_request')
       );
       feedback.textContent = missingRequestRpc
-        ? 'Event requests are not enabled in Supabase yet. Apply database/20260928000000_event_approval_workflow.sql, reload the schema, and try again.'
+        ? 'Event requests are not enabled in Supabase yet. Apply the event approval migration and database/20261002000000_mentor_application_workflow.sql, reload the schema, and try again.'
         : `Could not save the event: ${error.message}`;
     } finally {
       saveButton.disabled = false;
@@ -365,7 +408,7 @@
     user = authData.user;
     const { data: profile, error: profileError } = await db
       .from('profiles')
-      .select('role')
+      .select('role, mentor_approval_status, is_active')
       .eq('id', user.id)
       .single();
 
@@ -373,8 +416,34 @@
       feedback.textContent = 'Could not load your account role.';
       return;
     }
+    if (profile.is_active === false) {
+      await db.auth.signOut();
+      window.location.replace('index.html');
+      return;
+    }
 
-    role = profile.role;
+    role = profile.role === 'supervisor' ? 'supervisor' : 'student';
+    const legacyMentorApproved = profile.role === 'mentor'
+      && profile.mentor_approval_status === 'approved';
+    const { data: application, error: applicationError } = await db
+      .from('mentor_applications')
+      .select('status')
+      .eq('applicant_id', user.id)
+      .maybeSingle();
+
+    if (applicationError && applicationError.code !== 'PGRST205') {
+      feedback.textContent = 'Could not verify mentor application access.';
+      return;
+    }
+
+    if (legacyMentorApproved || application?.status === 'approved') {
+      role = 'mentor';
+    }
+
+    if (isMentorDashboard && role !== 'mentor') {
+      window.location.replace('student.html');
+      return;
+    }
     await loadMonthEvents();
   }
 

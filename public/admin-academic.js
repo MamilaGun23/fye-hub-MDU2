@@ -271,7 +271,7 @@
     .academic-manage-list{padding-left:0;list-style:none}
     .academic-manage-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e4ebf3}
     .academic-manage-list li span{min-width:0;overflow-wrap:anywhere}
-    .academic-edit-button{flex:0 0 auto;border:0;border-radius:8px;padding:7px 10px;color:#245c96;background:#edf3fa;font:inherit;cursor:pointer}
+    .academic-edit-button{flex:0 0 auto;border:1px solid #cbd5e1;border-radius:10px;padding:9px 12px;color:#1a2a6c;background:#fff;font:600 14px 'DM Sans',sans-serif;cursor:pointer}
     .academic-row-actions{display:flex;flex:0 0 auto;gap:6px}
     .academic-delete-button{border:0;border-radius:8px;padding:7px 10px;color:#8e3838;background:#fbeaea;font:inherit;cursor:pointer}
     .academic-row-actions button:disabled{opacity:.6;cursor:wait}

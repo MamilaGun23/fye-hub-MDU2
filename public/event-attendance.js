@@ -36,10 +36,10 @@
 
     const { data: profile, error: profileError } = await db
       .from('profiles')
-      .select('role')
+      .select('role, is_active')
       .eq('id', authData.user.id)
       .maybeSingle();
-    if (profileError || profile?.role !== 'student') {
+    if (profileError || !['student', 'mentor'].includes(profile?.role) || profile.is_active === false) {
       title.textContent = event.title;
       details.textContent = `${event.event_date} · ${String(event.event_time).slice(0, 5)} · ${event.venue}`;
       feedback.textContent = 'Only signed-in student accounts can record event attendance.';
@@ -48,6 +48,11 @@
 
     title.textContent = event.title;
     details.textContent = `${event.event_date} · ${String(event.event_time).slice(0, 5)} · ${event.venue}`;
+    if (!event.can_check_in) {
+      feedback.textContent = event.check_in_message;
+      return;
+    }
+    feedback.textContent = event.check_in_message;
     submitButton.disabled = false;
   }
 

@@ -15,8 +15,7 @@
 <body>
   <aside class="sidebar">
     <a class="brand" href="index.html">
-      <span class="brand-mark">✿</span>
-      <span>FYE <b>HUB</b></span>
+      <span class="brand-wordmark">FYE <b>HUB</b></span>
     </a>
 
     <p class="menu-label">STUDENT MENU</p>
@@ -33,6 +32,9 @@
       <a class="nav-link" href="#updates" data-view="updates">
         <span>♧</span> Notifications <span class="notification-count" id="notification-count" hidden></span>
       </a>
+      <a class="nav-link" href="#mentor-application" data-view="mentor-application">
+        <span>✓</span> Mentor application
+      </a>
     </nav>
 
     <div class="sidebar-bottom">
@@ -41,7 +43,7 @@
         <strong>You belong here.</strong>
         <p>Your FYE family is here to support you.</p>
       </div>
-      <a class="signout" href="index.html">↪ <span>Sign out</span></a>
+      <a class="signout" href="index.html"><span class="signout-arrow" aria-hidden="true">↪</span> <span>Sign out</span></a>
     </div>
   </aside>
 
@@ -71,7 +73,7 @@
             Your FYE family is right here with you.
           </p>
           <button class="text-button" type="button" data-go="mentor">
-            Meet your mentor →
+            Meet your mentor <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </div>
         <div class="banner-art" aria-hidden="true">
@@ -102,21 +104,21 @@
           <p class="summary-text">Peer Mentor · Faculty of Agriculture</p>
           <div class="mentor-status"><span></span> Here to support you</div>
           <button class="text-button" type="button" data-go="mentor">
-            View mentor details →
+            View mentor details <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </article>
 
         <article class="next-card">
           <div class="card-heading">
             <div>
-              <p class="card-kicker">NEXT IMPORTANT DATE</p>
-              <h3>Introduction to Biology</h3>
+              <p class="card-kicker">NEXT UPCOMING EVENT</p>
+              <h3 id="next-calendar-event-title">Loading event…</h3>
             </div>
             <span class="calendar-icon">▦</span>
           </div>
-          <p class="summary-text">Test · 8 October · 09:00 · Main Campus</p>
-          <button class="text-button" type="button" data-go="calendar">
-            Open your calendar →
+          <p class="summary-text" id="next-calendar-event-details" aria-live="polite">Checking the calendar…</p>
+          <button class="text-button" id="open-next-calendar-event" type="button" disabled>
+            View event on calendar <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </article>
       </div>
@@ -139,7 +141,7 @@
           Approved event notices and reminders will appear here.
         </p>
         <button class="text-button" type="button" data-go="updates">
-          View notifications →
+          View notifications <span class="button-arrow" aria-hidden="true">→</span>
         </button>
       </article>
     </section>
@@ -261,6 +263,42 @@
         <div id="notification-list" aria-live="polite">
           <p class="summary-text">Loading notifications…</p>
         </div>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="mentor-application" hidden>
+      <div class="section-heading page-title">
+        <div>
+          <p class="section-kicker">BECOME A PEER MENTOR</p>
+          <h2>Mentor application</h2>
+        </div>
+      </div>
+
+      <article class="content-panel">
+        <p class="summary-text">
+          Applicants must be in at least their second year and have passed every applicable module from the previous academic year. A supervisor will review your academic record.
+        </p>
+        <p class="form-feedback" id="mentor-application-status" role="status" aria-live="polite"></p>
+        <form id="mentor-application-form" class="data-form">
+          <label for="mentor-student-number">Student number</label>
+          <input id="mentor-student-number" name="student_number" type="text" autocomplete="off" maxlength="40" required>
+
+          <label for="mentor-study-year">Current year of study</label>
+          <input id="mentor-study-year" name="study_year" type="number" min="2" max="20" step="1" required>
+
+          <label for="mentor-previous-year">Previous completed academic year</label>
+          <input id="mentor-previous-year" name="previous_academic_year" type="text" maxlength="40" placeholder="For example, 2025" required>
+
+          <label for="mentor-academic-record">Academic record (PDF, up to 10 MB)</label>
+          <input id="mentor-academic-record" name="academic_record" type="file" accept="application/pdf,.pdf" required>
+
+          <label class="mentor-application-confirmation" for="mentor-application-confirm">
+            <input id="mentor-application-confirm" type="checkbox" required>
+            <span>I confirm these details and record are accurate, I am at least in my second year, and I passed every applicable module in the previous academic year. I consent to FYE supervisors reviewing this record for this application.</span>
+          </label>
+
+          <button class="form-action" id="mentor-application-submit" type="submit">Submit application</button>
+        </form>
       </article>
     </section>
 

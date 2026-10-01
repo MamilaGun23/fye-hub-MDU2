@@ -29,20 +29,47 @@
       return;
     }
 
-    const { data, error } = await db
-      .from('event_notifications')
-      .select('id, title, message, notification_type, qr_token, scheduled_for, read_at')
-      .eq('recipient_id', authData.user.id)
-      .lte('scheduled_for', new Date().toISOString())
-      .order('scheduled_for', { ascending: false });
+    const { data: profile, error: profileError } = await db
+      .from('profiles')
+      .select('is_active')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+    if (profileError || profile?.is_active === false) {
+      await db.auth.signOut();
+      list.replaceChildren(textElement('p', 'summary-text', 'This account is disabled. Contact your FYE administrator.'));
+      return;
+    }
 
-    if (error) {
-      console.error('Could not load event notifications:', error);
+    const now = new Date().toISOString();
+    const [eventResult, noticeResult] = await Promise.all([
+      db.from('event_notifications')
+        .select('id, title, message, notification_type, qr_token, scheduled_for, read_at')
+        .eq('recipient_id', authData.user.id)
+        .lte('scheduled_for', now)
+        .order('scheduled_for', { ascending: false }),
+      db.from('system_notice_notifications')
+        .select('id, title, message, scheduled_for, read_at')
+        .eq('recipient_id', authData.user.id)
+        .lte('scheduled_for', now)
+        .order('scheduled_for', { ascending: false })
+    ]);
+
+    if (eventResult.error || (noticeResult.error && noticeResult.error.code !== 'PGRST205')) {
+      const error = eventResult.error || noticeResult.error;
+      console.error('Could not load notifications:', error);
       list.replaceChildren(textElement('p', 'summary-text', `Could not load notifications: ${error.message}`));
       return;
     }
 
-    const notifications = data || [];
+    const notifications = [
+      ...(eventResult.data || []).map((item) => ({ ...item, source: 'event' })),
+      ...(noticeResult.data || []).map((item) => ({
+        ...item,
+        source: 'system_notice',
+        notification_type: 'admin_notice',
+        qr_token: null
+      }))
+    ].sort((left, right) => new Date(right.scheduled_for) - new Date(left.scheduled_for));
     const latestTitle = document.querySelector('#latest-notification-title');
     const latestMessage = document.querySelector('#latest-notification-message');
     if (latestTitle) latestTitle.textContent = notifications[0]?.title || 'You’re all caught up';
@@ -80,7 +107,10 @@
         readButton.type = 'button';
         readButton.addEventListener('click', async () => {
           readButton.disabled = true;
-          const { error: updateError } = await db.rpc('mark_event_notification_read', {
+          const rpcName = notification.source === 'system_notice'
+            ? 'mark_system_notice_notification_read'
+            : 'mark_event_notification_read';
+          const { error: updateError } = await db.rpc(rpcName, {
             p_notification_id: notification.id
           });
           if (updateError) {

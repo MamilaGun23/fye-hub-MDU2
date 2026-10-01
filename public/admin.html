@@ -18,8 +18,7 @@
 <body>
   <aside class="sidebar">
     <a class="brand" href="index.html">
-      <span class="brand-mark">✿</span>
-      <span>FYE <b>HUB</b></span>
+      <span class="brand-wordmark">FYE <b>HUB</b></span>
     </a>
 
     <p class="menu-label">ADMIN MENU</p>
@@ -27,6 +26,9 @@
     <nav class="main-nav" aria-label="Admin navigation">
       <a class="nav-link active" href="#overview" data-view="overview">
         <span>⌂</span> Overview
+      </a>
+      <a class="nav-link" href="#analytics" data-view="analytics">
+        <span>▥</span> Analytics
       </a>
       <a class="nav-link" href="#users" data-view="users">
         <span>♙</span> User accounts
@@ -47,7 +49,7 @@
       </div>
 
       <a class="signout" id="admin-signout" href="index.html">
-        ↪ <span>Sign out</span>
+        <span class="signout-arrow" aria-hidden="true">↪</span> <span>Sign out</span>
       </a>
     </div>
   </aside>
@@ -79,7 +81,7 @@
           </h1>
           <p>Keep user records and academic information accurate across FYE Hub.</p>
           <button class="text-button" type="button" data-go="users">
-            Review user accounts →
+            Review user accounts <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </div>
 
@@ -104,7 +106,7 @@
           <h3 id="admin-total-users">—</h3>
           <p class="summary-text" id="admin-role-counts">Loading account totals…</p>
           <button class="text-button" type="button" data-go="users">
-            View accounts →
+            View accounts <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </article>
 
@@ -115,7 +117,7 @@
             Academic lists used for student registration and mentor matching.
           </p>
           <button class="text-button" type="button" data-go="setup">
-            View academic lists →
+            View academic lists <span class="button-arrow" aria-hidden="true">→</span>
           </button>
         </article>
       </div>
@@ -127,6 +129,75 @@
           Use this dashboard to review user profiles and academic lists.
           Supervisors continue to manage mentor assignments.
         </p>
+      </article>
+    </section>
+
+    <section class="page-view" data-page="analytics" hidden>
+      <div class="section-heading page-title admin-analytics-toolbar">
+        <div>
+          <p class="section-kicker">PLATFORM ACTIVITY</p>
+          <h2>Analytics</h2>
+        </div>
+        <label for="analytics-period">Period
+          <select id="analytics-period">
+            <option value="30">Last 30 days</option>
+            <option value="90" selected>Last 90 days</option>
+            <option value="365">Last 12 months</option>
+            <option value="all">All time</option>
+          </select>
+        </label>
+        <button class="form-action" id="analytics-refresh" type="button">Refresh analytics</button>
+      </div>
+
+      <p class="form-feedback" id="analytics-feedback" role="status" aria-live="polite"></p>
+
+      <div class="admin-analytics-grid" aria-live="polite">
+        <article class="admin-metric">
+          <p class="card-kicker">STUDENTS ON PLATFORM</p>
+          <strong id="analytics-students">—</strong>
+          <span>Active student and mentor accounts</span>
+        </article>
+        <article class="admin-metric">
+          <p class="card-kicker">ACTIVE MENTORS</p>
+          <strong id="analytics-mentors">—</strong>
+          <span>Mentor profiles currently enabled</span>
+        </article>
+        <article class="admin-metric">
+          <p class="card-kicker">EVENTS IN PERIOD</p>
+          <strong id="analytics-events">—</strong>
+          <span>Events on the shared calendar</span>
+        </article>
+        <article class="admin-metric">
+          <p class="card-kicker">UPCOMING EVENTS</p>
+          <strong id="analytics-upcoming">—</strong>
+          <span>Scheduled events from today onward</span>
+        </article>
+        <article class="admin-metric">
+          <p class="card-kicker">ACTIVE ASSIGNMENTS</p>
+          <strong id="analytics-assignments">—</strong>
+          <span>Current student and mentor matches</span>
+        </article>
+        <article class="admin-metric">
+          <p class="card-kicker">DISABLED PROFILES</p>
+          <strong id="analytics-disabled">—</strong>
+          <span>Student or mentor accounts disabled</span>
+        </article>
+        <article class="admin-metric">
+          <p class="card-kicker">ACTIVE NOTICES</p>
+          <strong id="analytics-notices">—</strong>
+          <span>Notices currently published or scheduled</span>
+        </article>
+      </div>
+
+      <article class="content-panel admin-analytics-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">EVENT ACTIVITY</p>
+            <h3>Events by month</h3>
+          </div>
+          <p class="summary-text" id="analytics-event-total">Loading event activity…</p>
+        </div>
+        <div id="analytics-event-chart" class="admin-event-chart" role="img" aria-label="Events by month"></div>
       </article>
     </section>
 
@@ -195,11 +266,13 @@
                 <th>Role</th>
                 <th>Faculty</th>
                 <th>Programme</th>
+                <th>Account status</th>
+                <th>Access</th>
               </tr>
             </thead>
             <tbody id="user-list">
               <tr>
-                <td colspan="5">Loading profiles…</td>
+                <td colspan="7">Loading profiles…</td>
               </tr>
             </tbody>
           </table>
@@ -311,9 +384,8 @@
 
       <article class="content-panel">
         <p class="summary-text">
-          Publish maintenance notices for students, mentors, supervisors, and
-          admins. Notices appear on their dashboards during the selected time
-          period.
+          Publish notices for students and mentors. They appear on those dashboards
+          and in their notifications during the selected time period.
         </p>
 
         <form id="notice-form" class="data-form">
