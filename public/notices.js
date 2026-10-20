@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const db = window.fyeSupabase;
   const main = document.querySelector('.main-content');
   if (!db || !main) return;
@@ -43,7 +44,7 @@
       .order('starts_at', { ascending: true });
 
     if (error) {
-      console.error('Could not load system notices:', error);
+      console.error('Could not load updates:', error);
       return;
     }
 
@@ -64,7 +65,7 @@
 
     const container = document.createElement('section');
     container.className = 'fye-system-notices';
-    container.setAttribute('aria-label', 'System notices');
+    container.setAttribute('aria-label', 'Updates');
 
     for (const notice of visibleNotices) {
       const card = document.createElement('article');
@@ -73,7 +74,7 @@
       const dismissButton = document.createElement('button');
       dismissButton.type = 'button';
       dismissButton.className = 'fye-system-notice-dismiss';
-      dismissButton.setAttribute('aria-label', `Dismiss notice: ${notice.title}`);
+      dismissButton.setAttribute('aria-label', `Dismiss update: ${notice.title}`);
       dismissButton.textContent = '×';
       dismissButton.addEventListener('click', () => {
         dismissedIds.add(notice.id);
@@ -94,10 +95,18 @@
 
       const period = document.createElement('small');
       period.textContent = notice.ends_at
-        ? `Notice period: ${formatDate(notice.starts_at)} to ${formatDate(notice.ends_at)}`
-        : `Notice starts: ${formatDate(notice.starts_at)}`;
+        ? `Update period: ${formatDate(notice.starts_at)} to ${formatDate(notice.ends_at)}`
+        : `Update starts: ${formatDate(notice.starts_at)}`;
 
       card.append(heading, message, period, dismissButton);
+      if (notice.ends_at) {
+        const removeWhenExpired = () => {
+          const remaining = new Date(notice.ends_at).getTime() - Date.now();
+          if (remaining <= 0) { card.remove(); if (!container.children.length) container.remove(); }
+          else window.setTimeout(removeWhenExpired, Math.min(remaining, 2147483647));
+        };
+        removeWhenExpired();
+      }
       container.appendChild(card);
     }
 
@@ -107,4 +116,5 @@
   }
 
   loadNotices();
+  window.setInterval(loadNotices, 60000);
 })();

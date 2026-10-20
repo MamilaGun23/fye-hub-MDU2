@@ -129,8 +129,8 @@ BEGIN
     supervisor.id,
     'admin_notice',
     NEW.id::TEXT,
-    'Admin published a notice',
-    NEW.title || ': ' || NEW.message
+    NEW.title,
+    NEW.message
   FROM public.profiles AS supervisor
   WHERE supervisor.role = 'supervisor'
   ON CONFLICT (recipient_id, notification_type, subject_id) DO NOTHING;

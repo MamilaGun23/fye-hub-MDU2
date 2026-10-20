@@ -1,5 +1,4 @@
 const loginDialog = document.querySelector('.login-dialog');
-const roleName = document.querySelector('#selected-role');
 const dialogTitle = document.querySelector('#dialog-title');
 const loginForm = document.querySelector('#login-form');
 const signupForm = document.querySelector('#signup-form');
@@ -13,26 +12,12 @@ const programmeSelect = document.querySelector('#signup-programme');
 const loginButton = loginForm.querySelector('button[type="submit"]');
 const signupButton = document.querySelector('#signup-button');
 
-const dashboardPages = {
-  student: 'student.html',
-  mentor: 'mentor.html',
-  supervisor: 'supervisor.html',
-  admin: 'admin.html'
-};
-
-function selectedRole() {
-  return roleName.textContent.trim().toLowerCase();
-}
-
 function showLoginView() {
   dialogTitle.textContent = 'Sign in';
   loginForm.style.display = 'grid';
   signupForm.style.display = 'none';
 
-  const role = selectedRole();
-  signupPrompt.style.display = role === 'student' ? 'block' : 'none';
-  document.querySelector('#mentor-signin-help').style.display =
-    role === 'mentor' ? 'block' : 'none';
+  signupPrompt.style.display = 'block';
 
   signinPrompt.style.display = 'none';
   message.textContent = '';
@@ -40,9 +25,6 @@ function showLoginView() {
 }
 
 function showSignupView() {
-  const role = selectedRole();
-  if (role !== 'student') return;
-
   dialogTitle.textContent = 'Create student account';
 
   loginForm.style.display = 'none';
@@ -62,9 +44,7 @@ function showSignupView() {
   loadFaculties();
 }
 
-document.querySelectorAll('.role-card').forEach((card) => {
-  card.addEventListener('click', () => {
-    roleName.textContent = card.dataset.role;
+document.querySelector('#open-signin').addEventListener('click', () => {
     loginForm.reset();
     signupForm.reset();
 
@@ -80,7 +60,6 @@ document.querySelectorAll('.role-card').forEach((card) => {
 
     showLoginView();
     loginDialog.showModal();
-  });
 });
 
 document.querySelector('.close-button').addEventListener('click', () => {
@@ -192,12 +171,12 @@ loginForm.addEventListener('submit', async (event) => {
 
   const email = document.querySelector('#email').value.trim();
   const password = document.querySelector('#password').value;
-  const role = selectedRole();
 
   loginButton.disabled = true;
   loginButton.textContent = 'Signing in…';
 
   try {
+    await window.fyeAuth.ready;
     const { data: signInData, error: signInError } =
       await window.fyeSupabase.auth.signInWithPassword({ email, password });
 
@@ -206,72 +185,14 @@ loginForm.addEventListener('submit', async (event) => {
       return;
     }
 
-    const { data: profile, error: profileError } = await window.fyeSupabase
-      .from('profiles')
-      .select('role, mentor_approval_status, is_active')
-      .eq('id', signInData.user.id)
-      .single();
-
-    if (profileError || !profile) {
-      await window.fyeSupabase.auth.signOut();
-      message.textContent = 'We could not find a profile for this account.';
-      return;
-    }
-
-    if (profile.is_active === false) {
-      await window.fyeSupabase.auth.signOut();
-      message.textContent = 'This account is disabled. Contact your FYE administrator for assistance.';
-      return;
-    }
-
-    if (role === 'mentor') {
-      if (profile.role === 'mentor' && profile.mentor_approval_status === 'approved') {
-        window.location.replace(dashboardPages.mentor);
-        return;
-      }
-
-      if (profile.role === 'student' || profile.role === 'mentor') {
-        const { data: application, error: applicationError } = await window.fyeSupabase
-          .from('mentor_applications')
-          .select('status')
-          .eq('applicant_id', signInData.user.id)
-          .maybeSingle();
-
-        if (applicationError) {
-          if (profile.role === 'mentor') {
-            window.location.replace(dashboardPages.student);
-            return;
-          }
-          await window.fyeSupabase.auth.signOut();
-          message.textContent = 'Mentor application access is not available yet. Please contact your FYE coordinator.';
-          return;
-        }
-
-        window.location.replace(application?.status === 'approved'
-          || profile.mentor_approval_status === 'approved'
-          ? dashboardPages.mentor
-          : dashboardPages.student);
-        return;
-      }
-    }
-
-    if (role === 'student' && profile.role === 'mentor') {
-      window.location.replace(dashboardPages.student);
-      return;
-    }
-
-    if (profile.role !== role) {
-      await window.fyeSupabase.auth.signOut();
-      message.textContent =
-        `This account is registered as ${profile.role}. Choose that role and try again.`;
-      return;
-    }
-
-    window.location.replace(dashboardPages[profile.role]);
+    const account = await window.fyeAuth.resolveAccount(signInData.user);
+    window.location.replace(window.fyeAuth.destination(account));
   } catch (error) {
     console.error('Sign-in error:', error);
-    message.textContent =
-      'Something went wrong while signing in. Please try again.';
+    if (['disabled', 'missing-profile', 'unsupported-role'].includes(error.code)) {
+      try { await window.fyeAuth.signOut(); } catch (signOutError) { console.error('Could not end session:', signOutError); }
+    }
+    message.textContent = error.code ? error.message : 'Something went wrong while signing in. Please try again.';
   } finally {
     loginButton.disabled = false;
     loginButton.innerHTML = 'Sign in <span aria-hidden="true">→</span>';
@@ -288,19 +209,23 @@ signupForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  const role = selectedRole();
-
-  if (role !== 'student') {
-    message.textContent = 'Create a student account first, then apply to become a mentor from your dashboard.';
-    return;
-  }
-
   const email = document.querySelector('#signup-email').value.trim();
   const password = document.querySelector('#signup-password').value;
 
+  const fullName = document.querySelector('#signup-name').value.trim();
+  const nameParts = fullName.split(/\s+/);
+  const firstName = nameParts[0] || '';
+  const lastName = nameParts.slice(1).join(' ') || '';
+
   const metadata = {
     role: 'student',
-    full_name: document.querySelector('#signup-name').value.trim()
+    full_name: fullName,
+    first_name: firstName,
+    last_name: lastName,
+    student_number: document.querySelector('#signup-student-number').value.trim(),
+    study_year: Number(document.querySelector('#signup-study-year').value),
+    first_entry_year: Number(document.querySelector('#signup-entry-year').value),
+    entry_status: document.querySelector('#signup-entry-status').value
   };
 
   const facultyId = facultySelect.value;
@@ -331,7 +256,8 @@ signupForm.addEventListener('submit', async (event) => {
     }
 
     if (data.session) {
-      window.location.replace(dashboardPages[role]);
+      const account = await window.fyeAuth.resolveAccount(data.user);
+      window.location.replace(window.fyeAuth.destination(account));
       return;
     }
 

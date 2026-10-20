@@ -23,7 +23,7 @@
       calendarLink.append(icon, document.createTextNode(` ${eventManagementLabel}`));
       nav.appendChild(calendarLink);
     } else if (isSupervisorPage) {
-      calendarLink.innerHTML = '<span>▦</span> Event management';
+      calendarLink.innerHTML = '<span aria-hidden="true">▦</span> Event calendar';
     }
 
     let page = main.querySelector('.page-view[data-page="calendar"]');
@@ -105,10 +105,21 @@
       .fye-calendar-date.is-selected.has-events:after{background:white}
       .fye-calendar-date.has-events{border:2px solid #d89b28;background:#fff1cc;color:#704b00;font-weight:700;box-shadow:inset 0 0 0 1px rgba(216,155,40,.12)}
       .fye-calendar-date.has-events:hover{background:#ffe6a6}
-      .fye-calendar-date.is-selected.has-events{border:2px solid #d89b28;background:#1a2a6c;color:white;box-shadow:inset 0 0 0 2px rgba(255,255,255,.2)}
+      .fye-calendar-date.is-past{color:#94a3b8}
+      .fye-calendar-date.has-events.is-past{border:1px solid #cbd5e1;background:#f1f5f9;color:#94a3b8;box-shadow:none;font-weight:500}
+      .fye-calendar-date.has-events.is-past:after{background:#94a3b8}
+      .fye-calendar-date.has-events.is-past:hover{background:#e2e8f0;color:#64748b}
+      .fye-calendar-date.is-selected.has-events.is-past{border:2px solid #94a3b8;background:#64748b;color:white}
+      .fye-calendar-date.is-selected.has-events.is-past:after{background:#e2e8f0}
       .fye-calendar-day-panel{margin-top:24px;padding-top:18px;border-top:1px solid #e4ebf3}
       .fye-calendar-day-panel h3{margin-top:0}
-      .fye-calendar-event{margin-top:12px;padding:14px;border:1px solid #e0e8f1;border-radius:12px;background:#f8fafd}
+      .fye-calendar-event{margin-top:12px;padding:14px;border:1px solid #e0e8f1;border-radius:12px;background:#f8fafd;transition:opacity .2s ease,background .2s ease}
+      .fye-calendar-event.is-past{opacity:0.65;background:#f1f5f9;border-color:#cbd5e1;color:#64748b}
+      .fye-calendar-event.is-past:hover{opacity:0.9}
+      .fye-calendar-event.is-past h4{color:#64748b}
+      .fye-calendar-event.is-past .fye-calendar-event-type{color:#94a3b8}
+      .fye-calendar-event.is-past .event-time-state{color:#94a3b8;font-weight:600}
+      .fye-calendar-event.is-past .summary-text{color:#94a3b8}
       .fye-calendar-event h4,.fye-calendar-event p{margin:6px 0}
       .fye-calendar-event-type{color:#1a2a6c;font-size:.82rem;font-weight:700;text-transform:uppercase}
       #calendar-event-form{margin-top:16px}
@@ -167,8 +178,9 @@
     }
 
     for (const item of events) {
+      const isPast = new Date(item.ends_at || item.starts_at) < new Date();
       const card = document.createElement('article');
-      card.className = 'fye-calendar-event';
+      card.className = `fye-calendar-event${isPast ? ' is-past' : ''}`;
       card.dataset.eventId = String(item.id);
       const type = document.createElement('p');
       type.className = 'fye-calendar-event-type';
@@ -178,11 +190,21 @@
       const description = document.createElement('p');
       description.className = 'summary-text';
       description.textContent = item.description || '';
+      const eventState = document.createElement('p');
+      eventState.className = 'event-time-state';
+      eventState.textContent = isPast
+        ? 'Past event'
+        : 'Upcoming event';
       const details = document.createElement('p');
       details.className = 'summary-text';
       const startsAt = new Date(item.starts_at);
-      details.textContent = `${startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}${item.location ? ` · ${item.location}` : ''}`;
-      card.append(type, title, details, description);
+      const timeText = startsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const endsAt = item.ends_at ? new Date(item.ends_at) : null;
+      const range = endsAt && endsAt.toDateString() === startsAt.toDateString()
+        ? `${timeText}–${endsAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : timeText;
+      details.textContent = `${range}${item.location ? ` · ${item.location}` : ''}`;
+      card.append(type, title, eventState, details, description);
       eventList.appendChild(card);
     }
   }
@@ -221,6 +243,9 @@
       daysGrid.appendChild(blank);
     }
 
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
     for (let day = 1; day <= daysInMonth; day += 1) {
       const date = new Date(year, month, day);
       const button = document.createElement('button');
@@ -229,8 +254,13 @@
       button.textContent = String(day);
       button.setAttribute('aria-label', displayDate(date));
 
+      const dayMidnight = new Date(date);
+      dayMidnight.setHours(0, 0, 0, 0);
+      const isPastDay = dayMidnight < todayMidnight;
+
       if (dateKey(date) === dateKey(new Date())) button.classList.add('is-today');
       if (selectedDate && dateKey(date) === dateKey(selectedDate)) button.classList.add('is-selected');
+      if (isPastDay) button.classList.add('is-past');
       if (eventDays.has(dateKey(date))) button.classList.add('has-events');
 
       button.addEventListener('click', () => selectDate(date));
@@ -257,9 +287,7 @@
       feedback.textContent = `Could not load events: ${error.message}`;
       monthEvents = [];
     } else {
-      monthEvents = (data || []).filter((item) =>
-        role === 'supervisor' || item.event_status === 'scheduled'
-      );
+      monthEvents = (data || []).filter((item) => ['scheduled', 'completed'].includes(item.event_status));
       feedback.textContent = '';
     }
 
@@ -268,6 +296,8 @@
   }
 
   window.addEventListener('fye:calendar-refresh', loadMonthEvents);
+  window.setInterval(() => { loadMonthEvents(); if (isMentorDashboard) loadMentorNextEvent(); }, 60000);
+  window.addEventListener('focus', loadMonthEvents);
 
   window.addEventListener('fye:open-calendar-event', async (event) => {
     const eventId = String(event.detail?.id || '');
@@ -348,6 +378,17 @@
     const startsAt = new Date(
       selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes, 0
     );
+    const endsAt = endTimeInput.value
+      ? new Date(`${dateKey(selectedDate)}T${endTimeInput.value}`)
+      : null;
+    if (startsAt <= new Date()) {
+      feedback.textContent = 'Choose a future date and start time for the event.';
+      return;
+    }
+    if (endsAt && endsAt <= startsAt) {
+      feedback.textContent = 'The event end time must be after its start time.';
+      return;
+    }
 
     saveButton.disabled = true;
     saveButton.textContent = 'Saving…';
@@ -365,9 +406,7 @@
             p_title: title,
             p_description: description,
             p_starts_at: startsAt.toISOString(),
-            p_ends_at: endTimeInput.value
-              ? new Date(`${dateKey(selectedDate)}T${endTimeInput.value}`).toISOString()
-              : null,
+            p_ends_at: endsAt ? endsAt.toISOString() : null,
             p_venue: venue
           });
 
@@ -399,14 +438,16 @@
   });
 
   async function init() {
-    const { data: authData, error: authError } = await db.auth.getUser();
+    const account = window.fyeAuth ? await window.fyeAuth.ready : null;
+    if (window.fyeAuth && !account) return;
+    const { data: authData, error: authError } = account ? {data:{user:account.user}} : await db.auth.getUser();
     if (authError || !authData.user) {
       feedback.textContent = 'Please sign in to view the calendar.';
       return;
     }
 
     user = authData.user;
-    const { data: profile, error: profileError } = await db
+    const { data: profile, error: profileError } = account ? {data:account.profile} : await db
       .from('profiles')
       .select('role, mentor_approval_status, is_active')
       .eq('id', user.id)
@@ -422,29 +463,73 @@
       return;
     }
 
-    role = profile.role === 'supervisor' ? 'supervisor' : 'student';
-    const legacyMentorApproved = profile.role === 'mentor'
-      && profile.mentor_approval_status === 'approved';
-    const { data: application, error: applicationError } = await db
-      .from('mentor_applications')
-      .select('status')
-      .eq('applicant_id', user.id)
-      .maybeSingle();
-
-    if (applicationError && applicationError.code !== 'PGRST205') {
-      feedback.textContent = 'Could not verify mentor application access.';
-      return;
-    }
-
-    if (legacyMentorApproved || application?.status === 'approved') {
-      role = 'mentor';
+    role = account?.role || (profile.role === 'supervisor' ? 'supervisor' : 'student');
+    if (!account) {
+      try {
+        if (await window.fyeAcademic.mentor(user.id)) role = 'mentor';
+      } catch (error) { feedback.textContent = 'Could not verify the mentor appointment: '+error.message; return; }
     }
 
     if (isMentorDashboard && role !== 'mentor') {
       window.location.replace('student.html');
       return;
     }
+    if (isMentorDashboard) await loadMentorNextEvent();
+    if (typeof db.channel === 'function') {
+      const channel = db.channel('fye-shared-calendar')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'calendar_events' }, () => {
+          window.dispatchEvent(new CustomEvent('fye:calendar-refresh'));
+          if (isMentorDashboard) loadMentorNextEvent();
+        })
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'event_notifications', filter: `recipient_id=eq.${user.id}` }, () => {
+          window.dispatchEvent(new CustomEvent('fye:calendar-refresh'));
+          window.dispatchEvent(new CustomEvent('fye:notifications-refresh'));
+          if (isMentorDashboard) loadMentorNextEvent();
+        }).subscribe();
+      window.addEventListener('pagehide', () => db.removeChannel(channel), { once: true });
+    }
+    if (role === 'mentor') {
+      const facultyNote = document.createElement('p');
+      facultyNote.className = 'summary-text';
+      facultyNote.textContent = 'Event requests are restricted to your assigned faculty. Only that faculty’s students and mentors will see the approved event.';
+      eventForm.prepend(facultyNote);
+    }
     await loadMonthEvents();
+  }
+
+  async function loadMentorNextEvent() {
+    const title = document.querySelector('#mentor-next-event-title');
+    const details = document.querySelector('#mentor-next-event-details');
+    if (!title || !details) return;
+    const { data: events, error } = await db
+      .from('calendar_events')
+      .select('title, starts_at, ends_at, location, event_status')
+      .eq('event_status', 'scheduled')
+      .gte('starts_at', new Date().toISOString())
+      .order('starts_at', { ascending: true })
+      .limit(1);
+    if (error) {
+      console.error('Could not load the mentor dashboard event:', error);
+      title.textContent = 'Event unavailable';
+      details.textContent = `Could not load upcoming events: ${error.message}`;
+      return;
+    }
+    const nextEvent = events?.[0];
+    if (!nextEvent) {
+      title.textContent = 'No upcoming events';
+      details.textContent = 'New scheduled events will appear here.';
+      return;
+    }
+    title.textContent = nextEvent.title;
+    const startsAt = new Date(nextEvent.starts_at);
+    const dateTime = new Intl.DateTimeFormat('en-ZA', {
+      weekday: 'short', day: 'numeric', month: 'short',
+      hour: '2-digit', minute: '2-digit'
+    }).format(startsAt);
+    const endTime = nextEvent.ends_at
+      ? `–${new Intl.DateTimeFormat('en-ZA', { hour: '2-digit', minute: '2-digit' }).format(new Date(nextEvent.ends_at))}`
+      : '';
+    details.textContent = `${dateTime}${endTime}${nextEvent.location ? ` · ${nextEvent.location}` : ''}`;
   }
 
   init();

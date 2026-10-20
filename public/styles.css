@@ -241,12 +241,15 @@ footer {
   justify-content: space-between;
   padding: 19px clamp(22px, 7vw, 104px);
   font-size: 11px;
-  color: #8291a3;
-  border-top: 1px solid rgba(35, 65, 100, 0.08);
+  color: #facc15; /* gold/yellow accent */
+  background: #1a2a6c; /* match side navigation bar navy */
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  width: 100%;
+  box-sizing: border-box;
 }
 
 footer b {
-  color: #9db5d1;
+  color: #facc15; /* gold/yellow accent */
   margin: 0 4px;
 }
 
@@ -676,11 +679,13 @@ footer b {
 .landing-page footer {
   flex: none;
   border-top-color: rgba(255, 255, 255, 0.12);
-  background: #0f172a;
-  color: #cbd5e1;
+  background: #1a2a6c;
+  color: #facc15;
 }
 
-.landing-page footer b {
+.landing-page footer b,
+.landing-page footer a,
+.landing-page footer span {
   color: #facc15;
 }
 

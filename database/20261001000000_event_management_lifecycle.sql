@@ -5,7 +5,7 @@
 DO $$
 BEGIN
   IF to_regclass('public.calendar_events') IS NULL THEN
-    RAISE EXCEPTION 'calendar_events must exist before applying event management lifecycle migration';
+    RAISE EXCEPTION 'calendar_events must exist before applying the event request workflow migration';
   END IF;
 END;
 $$;

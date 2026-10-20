@@ -6,8 +6,11 @@
   <meta name="theme-color" content="#f2f6fc">
   <title>First Year Experience Hub | University of Mpumalanga</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="ui-theme.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js" defer></script>
+  <script src="academic.js" defer></script>
+  <script src="auth.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body class="landing-page">
@@ -44,47 +47,12 @@
         </div>
 
         <div class="welcome-options">
-          <div class="role-grid" aria-label="Choose your role to sign in">
-            <button class="role-card student" data-role="Student" type="button">
-              <span class="role-icon" aria-hidden="true">☀</span>
-              <span class="role-copy">
-                <strong>Student</strong>
-                <small>Your first-year journey starts here</small>
-              </span>
-              <span class="arrow" aria-hidden="true">↗</span>
-            </button>
-
-            <button class="role-card mentor" data-role="Mentor" type="button">
-              <span class="role-icon" aria-hidden="true">♡</span>
-              <span class="role-copy">
-                <strong>Mentor</strong>
-                <small>Sign in after your application is approved</small>
-              </span>
-              <span class="arrow" aria-hidden="true">↗</span>
-            </button>
-
-            <button class="role-card supervisor" data-role="Supervisor" type="button">
-              <span class="role-icon" aria-hidden="true">✳</span>
-              <span class="role-copy">
-                <strong>Supervisor</strong>
-                <small>Help students find their match</small>
-              </span>
-              <span class="arrow" aria-hidden="true">↗</span>
-            </button>
-
-            <button class="role-card admin" data-role="Admin" type="button">
-              <span class="role-icon" aria-hidden="true">⚙</span>
-              <span class="role-copy">
-                <strong>Admin</strong>
-                <small>Keep the FYE community thriving</small>
-              </span>
-              <span class="arrow" aria-hidden="true">↗</span>
-            </button>
-          </div>
-
-          <p class="help-note">
-            Not sure where to start? Choose your role above to sign in.
-          </p>
+          <button class="role-card student" id="open-signin" type="button">
+            <span class="role-icon" aria-hidden="true">&#8594;</span>
+            <span class="role-copy"><strong>Sign in</strong><small>Access your FYE Hub dashboard</small></span>
+            <span class="arrow" aria-hidden="true">&#8599;</span>
+          </button>
+          <p class="help-note">Sign in with your email and password. Your account determines your dashboard.</p>
         </div>
       </div>
     </section>
@@ -92,6 +60,7 @@
 
   <footer>
     <span>Growing together, one first year at a time.</span>
+    <a href="help.html">FAQs &amp; examples</a>
     <span>University of Mpumalanga <b>·</b> FYE Hub</span>
   </footer>
 
@@ -101,7 +70,7 @@
     <div class="dialog-flower" aria-hidden="true">✿</div>
     <p class="dialog-eyebrow">WELCOME TO THE FYE FAMILY</p>
     <h2 id="dialog-title">Sign in</h2>
-    <p class="dialog-role">Signing in as <strong id="selected-role">Student</strong></p>
+    <p class="dialog-role">One sign-in for students, mentors, supervisors and administrators.</p>
 
     <form id="login-form">
       <label for="email">University email</label>
@@ -109,7 +78,7 @@
         id="email"
         name="email"
         type="email"
-        placeholder="name@ump.ac.za"
+        placeholder="studentnumber@ump.ac.za"
         autocomplete="username"
         required
       >
@@ -139,6 +108,28 @@
           autocomplete="name"
         >
 
+        <label for="signup-student-number">Student number</label>
+        <input
+          id="signup-student-number"
+          name="student_number"
+          type="text"
+          maxlength="40"
+          autocomplete="off"
+          placeholder="For example, 202612345"
+          required
+        >
+
+        <label for="signup-study-year">Current year of study</label>
+        <select id="signup-study-year" name="study_year" required>
+          <option value="1">Year 1</option>
+          <option value="2">Year 2</option>
+          <option value="3">Year 3</option>
+          <option value="4">Year 4</option>
+          <option value="5">Year 5</option><option value="6">Year 6</option><option value="7">Year 7</option>
+        </select>
+
+        <label for="signup-entry-year">Original university entry year</label><input id="signup-entry-year" type="number" min="1900" required>
+        <label for="signup-entry-status">Previous university study</label><select id="signup-entry-status"><option value="first_time">First-time university entrant this year</option><option value="returning">Returning, transfer or readmitted student</option></select>
         <label for="signup-faculty">Faculty</label>
         <select id="signup-faculty" name="faculty">
           <option value="">Loading faculties…</option>
@@ -155,7 +146,7 @@
         id="signup-email"
         name="email"
         type="email"
-        placeholder="name@ump.ac.za"
+        placeholder="studentnumber@ump.ac.za"
         autocomplete="email"
         required
       >
@@ -192,9 +183,7 @@
       </button>
     </p>
 
-    <p class="login-help" id="mentor-signin-help" style="display: none;">
-      To apply, choose Student, sign in or create an account, then open Mentor application on your dashboard.
-    </p>
+
 
     <p class="login-help">
       Need help accessing your account? Contact your FYE coordinator.

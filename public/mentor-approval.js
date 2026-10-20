@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const db = window.fyeSupabase;
   const main = document.querySelector('.main-content');
   if (!db || !main) return;
@@ -17,7 +18,7 @@
       console.error('Could not load mentor approval status:', error);
       return;
     }
-    if (profile?.role !== 'mentor' || profile.mentor_approval_status === 'approved') return;
+    if (await window.fyeAcademic.mentor(authData.user.id)) return;
 
     const rejected = profile.mentor_approval_status === 'rejected';
     const notice = document.createElement('section');

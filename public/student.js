@@ -44,7 +44,10 @@ navLinks.forEach((link) => {
 });
 
 document.querySelectorAll('[data-go]').forEach((button) => {
-  button.addEventListener('click', () => showPage(button.dataset.go));
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    showPage(button.dataset.go);
+  });
 });
 
 const fyeClient = window.fyeSupabase;
@@ -98,6 +101,7 @@ function showNoMentor(message) {
 }
 
 async function loadAssignedMentor() {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   if (!fyeClient) {
     showNoMentor('The Supabase connection did not load. Please refresh the page.');
     return;
@@ -124,7 +128,7 @@ async function loadAssignedMentor() {
     }
 
     const { data: assignment, error: assignmentError } = await fyeClient
-      .from('mentor_assignments')
+      .from('active_mentor_assignments')
       .select('mentor_id, assigned_at')
       .eq('student_id', authData.user.id)
       .is('ended_at', null)
@@ -146,7 +150,7 @@ async function loadAssignedMentor() {
     const { data: mentor, error: mentorError } = await fyeClient
       .from('profiles')
       .select(
-        'id, full_name, email, faculty_id, bio, avatar_path, whatsapp_group_link'
+        'id, full_name, email, faculty_id, school, bio, avatar_path, whatsapp_group_link'
       )
       .eq('id', assignment.mentor_id)
       .single();
@@ -178,10 +182,12 @@ async function loadAssignedMentor() {
         .maybeSingle();
 
       if (mentorFaculty) {
-        mentorFaculty.textContent = faculty?.name || 'Faculty not listed';
+        mentorFaculty.textContent = [faculty?.name, mentor.school]
+          .filter(Boolean)
+          .join(' · ') || 'Faculty and school not listed';
       }
     } else if (mentorFaculty) {
-      mentorFaculty.textContent = 'Faculty not listed';
+      mentorFaculty.textContent = mentor.school || 'Faculty and school not listed';
     }
 
     if (initials) {
@@ -217,10 +223,11 @@ async function loadAssignedMentor() {
       }
     }
 
-    const emailLink = contactPanel?.querySelector('a[href^="mailto:"]');
+    const emailLink = contactPanel?.querySelector('#student-mentor-email') || contactPanel?.querySelector('a[href^="mailto:"]');
 
     if (emailLink && mentor.email) {
       emailLink.href = `mailto:${mentor.email}`;
+      emailLink.hidden = false;
       const emailLabel = emailLink.querySelector('span');
       if (emailLabel) emailLabel.textContent = `Email ${mentorName}`;
     } else if (emailLink) {
@@ -254,6 +261,7 @@ async function loadAssignedMentor() {
 
 loadAssignedMentor();
 async function loadStudentStudyDetails() {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const facultyDisplay = document.querySelector('#student-faculty');
   const programmeDisplay = document.querySelector('#student-programme');
   const greetingDisplay = document.querySelector('#student-greeting-name');
@@ -276,7 +284,7 @@ async function loadStudentStudyDetails() {
 
   const { data: profile, error: profileError } = await window.fyeSupabase
     .from('profiles')
-    .select('full_name, faculty_id, programme_id, is_active')
+    .select('full_name, faculty_id, programme_id, student_number, study_year, is_active')
     .eq('id', authData.user.id)
     .maybeSingle();
 
@@ -292,6 +300,20 @@ async function loadStudentStudyDetails() {
     await window.fyeSupabase.auth.signOut();
     window.location.replace('index.html');
     return;
+  }
+
+  const declaredStudyYear = Number(
+    profile.study_year || authData.user.user_metadata?.study_year || 0
+  );
+  const declaredStudentNumber = profile.student_number
+    || authData.user.user_metadata?.student_number
+    || '';
+  if ((!profile.study_year || !profile.student_number) && declaredStudyYear > 0 && declaredStudentNumber) {
+    const { error: detailsError } = await window.fyeSupabase.rpc('set_own_student_details', {
+      p_student_number: declaredStudentNumber,
+      p_study_year: declaredStudyYear
+    });
+    if (detailsError) console.error('Could not save student registration details:', detailsError);
   }
 
   const displayName = profile.full_name?.trim()
@@ -344,6 +366,7 @@ const openNextEventButton = document.querySelector('#open-next-calendar-event');
 let nextCalendarEvent = null;
 
 async function loadNextCalendarEvent() {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   if (!nextEventTitle || !window.fyeSupabase) return;
 
   const { data: events, error } = await window.fyeSupabase
@@ -392,119 +415,3 @@ openNextEventButton?.addEventListener('click', () => {
 });
 
 loadNextCalendarEvent();
-
-const mentorApplicationForm = document.querySelector('#mentor-application-form');
-const mentorApplicationStatus = document.querySelector('#mentor-application-status');
-const academicRecordInput = document.querySelector('#mentor-academic-record');
-
-async function loadMentorApplication() {
-  if (!mentorApplicationForm || !window.fyeSupabase) return;
-
-  const { data: authData, error: authError } = await window.fyeSupabase.auth.getUser();
-  if (authError || !authData.user) {
-    mentorApplicationStatus.textContent = 'Sign in again to manage your mentor application.';
-    mentorApplicationForm.hidden = true;
-    return;
-  }
-
-  const { data: application, error } = await window.fyeSupabase
-    .from('mentor_applications')
-    .select('id, status, review_reason, academic_record_path')
-    .eq('applicant_id', authData.user.id)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Could not load mentor application:', error);
-    mentorApplicationStatus.textContent = error.code === 'PGRST205'
-      ? 'Mentor applications are not enabled yet. The FYE coordinator must apply the mentor application database migration.'
-      : 'Could not load your mentor application. Please contact your FYE coordinator.';
-    mentorApplicationForm.hidden = true;
-    return;
-  }
-
-  mentorApplicationForm.hidden = false;
-  if (application?.status === 'approved') {
-    mentorApplicationStatus.textContent = 'Your mentor application is approved. You can sign in using Mentor.';
-    mentorApplicationForm.hidden = true;
-  } else if (application?.status === 'pending') {
-    mentorApplicationStatus.textContent = 'Your application is pending supervisor review.';
-    mentorApplicationForm.hidden = true;
-  } else if (application?.status === 'declined') {
-    mentorApplicationStatus.textContent = `Your application was declined: ${application.review_reason || 'No reason was provided.'} You may update the details and submit again.`;
-    academicRecordInput.required = true;
-  } else {
-    mentorApplicationStatus.textContent = 'Complete the details below to submit your application.';
-  }
-
-  mentorApplicationForm.dataset.previousRecordPath = application?.academic_record_path || '';
-}
-
-mentorApplicationForm?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  mentorApplicationStatus.textContent = '';
-
-  const db = window.fyeSupabase;
-  const studentNumber = document.querySelector('#mentor-student-number').value.trim();
-  const studyYear = Number(document.querySelector('#mentor-study-year').value);
-  const previousAcademicYear = document.querySelector('#mentor-previous-year').value.trim();
-  const file = academicRecordInput.files[0];
-  const submitButton = document.querySelector('#mentor-application-submit');
-
-  if (!Number.isInteger(studyYear) || studyYear < 2) {
-    mentorApplicationStatus.textContent = 'Mentors must be in at least their second year of study.';
-    return;
-  }
-
-  if (!file || file.type !== 'application/pdf' || file.size > 10 * 1024 * 1024) {
-    mentorApplicationStatus.textContent = 'Choose an academic record in PDF format, up to 10 MB.';
-    return;
-  }
-
-  const { data: authData, error: authError } = await db.auth.getUser();
-  if (authError || !authData.user) {
-    mentorApplicationStatus.textContent = 'Sign in again before submitting your application.';
-    return;
-  }
-
-  submitButton.disabled = true;
-  submitButton.textContent = 'Uploading application…';
-
-  const previousRecordPath = mentorApplicationForm.dataset.previousRecordPath;
-  const recordPath = `${authData.user.id}/${crypto.randomUUID()}.pdf`;
-
-  try {
-    const { error: uploadError } = await db.storage
-      .from('mentor-academic-records')
-      .upload(recordPath, file, { contentType: 'application/pdf', upsert: false });
-
-    if (uploadError) throw uploadError;
-
-    const { error: submitError } = await db.rpc('submit_mentor_application', {
-      p_student_number: studentNumber,
-      p_study_year: studyYear,
-      p_previous_academic_year: previousAcademicYear,
-      p_academic_record_path: recordPath
-    });
-
-    if (submitError) {
-      await db.storage.from('mentor-academic-records').remove([recordPath]);
-      throw submitError;
-    }
-
-    if (previousRecordPath) {
-      await db.storage.from('mentor-academic-records').remove([previousRecordPath]);
-    }
-
-    mentorApplicationForm.reset();
-    mentorApplicationStatus.textContent = 'Your application has been submitted and is pending supervisor review.';
-    await loadMentorApplication();
-  } catch (error) {
-    console.error('Could not submit mentor application:', error);
-    mentorApplicationStatus.textContent = `Could not submit your application: ${error.message || 'Please try again.'}`;
-  } finally {
-    submitButton.disabled = false;
-    submitButton.textContent = 'Submit application';
-  }
-});
-
-loadMentorApplication();

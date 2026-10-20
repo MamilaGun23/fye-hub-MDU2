@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const db = window.fyeSupabase;
   const list = document.querySelector('#notification-list');
   if (!db || !list) return;
@@ -21,6 +22,8 @@
 
   async function loadNotifications() {
     list.replaceChildren(textElement('p', 'summary-text', 'Loading notifications…'));
+    const feedback = document.querySelector('#notification-feedback');
+    if (feedback) feedback.textContent = '';
     if (countBadge) countBadge.hidden = true;
 
     const { data: authData, error: authError } = await db.auth.getUser();
@@ -75,7 +78,7 @@
     if (latestTitle) latestTitle.textContent = notifications[0]?.title || 'You’re all caught up';
     if (latestMessage) {
       latestMessage.textContent = notifications[0]?.message
-        || 'Approved event notices and reminders will appear here.';
+        || 'Updates, event information, and reminders will appear here.';
     }
     const unreadCount = notifications.filter((item) => !item.read_at).length;
     if (countBadge) {
@@ -99,29 +102,66 @@
       content.appendChild(textElement(
         'p',
         'notification-kind',
-        notification.notification_type.replaceAll('_', ' ')
+        notification.source === 'system_notice'
+          ? 'Update'
+          : notification.notification_type.replaceAll('_', ' ')
       ));
       header.appendChild(content);
-      if (!notification.read_at) {
-        const readButton = textElement('button', 'notification-read-button', 'Mark read');
-        readButton.type = 'button';
-        readButton.addEventListener('click', async () => {
-          readButton.disabled = true;
-          const rpcName = notification.source === 'system_notice'
-            ? 'mark_system_notice_notification_read'
-            : 'mark_event_notification_read';
-          const { error: updateError } = await db.rpc(rpcName, {
-            p_notification_id: notification.id
-          });
-          if (updateError) {
-            console.error('Could not mark notification as read:', updateError);
-            readButton.disabled = false;
-            return;
-          }
-          await loadNotifications();
+      const readButton = textElement(
+        'button',
+        'notification-read-button',
+        notification.read_at ? 'Mark unread' : 'Mark read'
+      );
+      readButton.type = 'button';
+      readButton.addEventListener('click', async () => {
+        readButton.disabled = true;
+        const willBeRead = !notification.read_at;
+        if (willBeRead) {
+          card.classList.add('is-read');
+          card.classList.remove('is-unread');
+          readButton.textContent = 'Mark unread';
+        } else {
+          card.classList.remove('is-read');
+          card.classList.add('is-unread');
+          readButton.textContent = 'Mark read';
+        }
+        const prefix = notification.source === 'system_notice'
+          ? 'system_notice'
+          : 'event';
+        const action = notification.read_at ? 'unread' : 'read';
+        const rpcName = `mark_${prefix}_notification_${action}`;
+        let { error: updateError } = await db.rpc(rpcName, {
+          p_notification_id: notification.id
         });
-        header.appendChild(readButton);
-      }
+        if (updateError && (updateError.code === 'PGRST202' || updateError.message?.includes('schema cache') || updateError.message?.includes('function'))) {
+          const tableName = notification.source === 'system_notice'
+            ? 'system_notice_notifications'
+            : 'event_notifications';
+          const { error: tableError } = await db
+            .from(tableName)
+            .update({ read_at: notification.read_at ? null : new Date().toISOString() })
+            .eq('id', notification.id);
+          updateError = tableError;
+        }
+        if (updateError) {
+          console.error('Could not update notification read state:', updateError);
+          if (willBeRead) {
+            card.classList.remove('is-read');
+            card.classList.add('is-unread');
+            readButton.textContent = 'Mark read';
+          } else {
+            card.classList.add('is-read');
+            card.classList.remove('is-unread');
+            readButton.textContent = 'Mark unread';
+          }
+          const feedback = document.querySelector('#notification-feedback');
+          if (feedback) feedback.textContent = `Could not update notification: ${updateError.message}`;
+          readButton.disabled = false;
+          return;
+        }
+        await loadNotifications();
+      });
+      header.appendChild(readButton);
 
       card.appendChild(header);
       card.appendChild(textElement('p', 'summary-text', notification.message));
@@ -168,5 +208,8 @@
   }
 
   refreshButton?.addEventListener('click', loadNotifications);
+  window.setInterval(loadNotifications, 60000);
+  window.addEventListener('focus', loadNotifications);
+  window.addEventListener('fye:notifications-refresh', loadNotifications);
   loadNotifications();
 })();

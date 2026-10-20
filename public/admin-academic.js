@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const db = window.fyeSupabase;
   const facultyForm = document.querySelector('#faculty-form');
   const programmeForm = document.querySelector('#programme-form');
@@ -33,6 +34,7 @@
   }
 
   function renderFaculties() {
+    const selectedFaculty = facultySelect.value;
     facultyList.replaceChildren();
     facultySelect.replaceChildren();
 
@@ -70,13 +72,17 @@
       const actions = document.createElement('span');
       actions.className = 'academic-row-actions';
       actions.append(editButton, deleteButton);
-      row.append(name, editButton);
       row.append(name, actions);
       facultyList.appendChild(row);
+    }
+    if (faculties.some((faculty) => String(faculty.id) === selectedFaculty)) {
+      facultySelect.value = selectedFaculty;
     }
   }
 
   function renderProgrammes() {
+    const openGroups = new Set([...programmeList.querySelectorAll('details[open]')].map(group => group.dataset.facultyId));
+    const search = window.fyeDirectory.normalize(document.querySelector('#programme-manage-search').value);
     programmeList.replaceChildren();
 
     if (!programmes.length) {
@@ -86,36 +92,76 @@
       return;
     }
 
+    const grouped = new Map();
     for (const programme of programmes) {
-      const row = document.createElement('li');
-      const faculty = faculties.find(
-        (item) => String(item.id) === String(programme.faculty_id)
-      );
-      const name = document.createElement('span');
-      name.textContent = `${programme.name} · ${faculty?.name || 'Faculty not found'}`;
-      const editButton = document.createElement('button');
-      editButton.type = 'button';
-      editButton.className = 'academic-edit-button';
-      editButton.textContent = 'Rename';
-      editButton.addEventListener('click', () => renameProgramme(programme));
-      row.append(name, editButton);
-      programmeList.appendChild(row);
+      const facultyId = String(programme.faculty_id);
+      const facultyName = faculties.find(faculty => String(faculty.id) === facultyId)?.name || 'Unknown faculty';
+      const text = window.fyeDirectory.normalize(`${programme.name} ${facultyName}`);
+      if (!search.split(/\s+/).filter(Boolean).every(term => text.includes(term))) continue;
+      if (!grouped.has(facultyId)) grouped.set(facultyId, []);
+      grouped.get(facultyId).push(programme);
+    }
+
+    const groups = [...grouped].sort(([a], [b]) => {
+      const nameFor = (id) => faculties.find((faculty) => String(faculty.id) === id)?.name || 'Unknown faculty';
+      return nameFor(a).localeCompare(nameFor(b));
+    });
+    for (const [facultyId, progs] of groups) {
+      const faculty = faculties.find((f) => String(f.id) === facultyId);
+      const groupRow = document.createElement('li');
+      groupRow.className = 'academic-programme-group';
+      const group = document.createElement('details'); group.dataset.facultyId = facultyId;
+      group.open = !!search || openGroups.has(facultyId);
+      const summary = document.createElement('summary'); summary.textContent = faculty?.name || 'Unknown faculty';
+      const list = document.createElement('ul'); list.className = 'academic-manage-list academic-programme-rows';
+      list.tabIndex = 0; list.setAttribute('aria-label', `Programmes in ${faculty?.name || 'unknown faculty'}`);
+      group.append(summary, list); groupRow.appendChild(group); programmeList.appendChild(groupRow);
+
+      for (const programme of progs) {
+        const row = document.createElement('li');
+        row.className = 'academic-programme-item';
+        const name = document.createElement('span');
+        name.textContent = programme.name;
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'academic-edit-button';
+        editButton.textContent = 'Rename';
+        editButton.addEventListener('click', () => renameProgramme(programme));
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'academic-delete-button';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => deleteProgramme(programme, deleteButton));
+        const actions = document.createElement('span');
+        actions.className = 'academic-row-actions';
+        const qualificationButton=document.createElement('button');qualificationButton.type='button';qualificationButton.textContent='Qualification';
+        qualificationButton.onclick=()=>window.fyeProgrammeQualification.open(programme,()=>loadAcademicData(true));
+        actions.append(editButton, deleteButton,qualificationButton);
+        row.append(name, actions);
+        list.appendChild(row);
+      }
+    }
+    if (!grouped.size) {
+      const empty = document.createElement('li'); empty.textContent = 'No programmes match your search.'; programmeList.appendChild(empty);
     }
   }
+  document.querySelector('#programme-manage-search').addEventListener('input', renderProgrammes);
 
-  async function loadAcademicData() {
+  async function loadAcademicData(notify = false) {
     facultyList.innerHTML = '<li>Loading faculties…</li>';
     programmeList.innerHTML = '<li>Loading programmes…</li>';
 
     const [facultyResult, programmeResult] = await Promise.all([
       db.from('faculties').select('id, name').order('name'),
-      db.from('programmes').select('id, name, faculty_id').order('name')
+      db.from('programmes').select('*').order('name')
     ]);
 
     if (facultyResult.error || programmeResult.error) {
       const error = facultyResult.error || programmeResult.error;
       console.error('Could not load academic setup:', error);
       facultyFeedback.textContent = `Could not load faculties or programmes: ${error.message}`;
+      facultyList.innerHTML = '<li>Faculty list unavailable. Refresh the page to retry.</li>';
+      programmeList.innerHTML = '<li>Programme list unavailable. Refresh the page to retry.</li>';
       return;
     }
 
@@ -123,6 +169,7 @@
     programmes = programmeResult.data || [];
     renderFaculties();
     renderProgrammes();
+    if (notify) document.dispatchEvent(new CustomEvent('academic-data-updated'));
   }
 
   async function renameFaculty(faculty) {
@@ -146,7 +193,7 @@
       return;
     }
     facultyFeedback.textContent = 'Faculty name updated.';
-    await loadAcademicData();
+    await loadAcademicData(true);
   }
 
   async function deleteFaculty(faculty, button) {
@@ -170,7 +217,7 @@
     }
 
     facultyFeedback.textContent = 'Faculty and its programmes deleted.';
-    await loadAcademicData();
+    await loadAcademicData(true);
   }
 
   async function renameProgramme(programme) {
@@ -198,7 +245,30 @@
       return;
     }
     programmeFeedback.textContent = 'Programme name updated.';
-    await loadAcademicData();
+    await loadAcademicData(true);
+  }
+
+  async function deleteProgramme(programme, button) {
+    const faculty = faculties.find((f) => String(f.id) === String(programme.faculty_id));
+    const confirmed = window.confirm(
+      `Delete "${programme.name}" from ${faculty?.name || 'this faculty'}? The database will block deletion if any profile uses this programme.`
+    );
+    if (!confirmed) return;
+
+    button.disabled = true;
+    programmeFeedback.textContent = 'Deleting programme…';
+
+    const { error } = await db.from('programmes').delete().eq('id', programme.id);
+
+    if (error) {
+      console.error('Could not delete programme:', error);
+      programmeFeedback.textContent = `Could not delete programme: ${error.message}`;
+      button.disabled = false;
+      return;
+    }
+
+    programmeFeedback.textContent = 'Programme deleted.';
+    await loadAcademicData(true);
   }
 
   facultyForm.addEventListener('submit', async (event) => {
@@ -222,7 +292,7 @@
     } else {
       facultyFeedback.textContent = 'Faculty added.';
       facultyForm.reset();
-      await loadAcademicData();
+      await loadAcademicData(true);
     }
     button.disabled = false;
     button.textContent = 'Add faculty';
@@ -260,7 +330,7 @@
     } else {
       programmeFeedback.textContent = 'Programme added.';
       programmeForm.reset();
-      await loadAcademicData();
+      await loadAcademicData(true);
     }
     button.disabled = false;
     button.textContent = 'Add programme';
@@ -268,15 +338,142 @@
 
   const style = document.createElement('style');
   style.textContent = `
-    .academic-manage-list{padding-left:0;list-style:none}
-    .academic-manage-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #e4ebf3}
-    .academic-manage-list li span{min-width:0;overflow-wrap:anywhere}
-    .academic-edit-button{flex:0 0 auto;border:1px solid #cbd5e1;border-radius:10px;padding:9px 12px;color:#1a2a6c;background:#fff;font:600 14px 'DM Sans',sans-serif;cursor:pointer}
-    .academic-row-actions{display:flex;flex:0 0 auto;gap:6px}
-    .academic-delete-button{border:0;border-radius:8px;padding:7px 10px;color:#8e3838;background:#fbeaea;font:inherit;cursor:pointer}
-    .academic-row-actions button:disabled{opacity:.6;cursor:wait}
-    .admin-academic-grid{align-items:start}
-    #programme-form textarea{box-sizing:border-box;width:100%}
+    .academic-manage-list {
+      padding-left: 0;
+      list-style: none;
+    }
+
+    .academic-manage-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e4ebf3;
+    }
+
+    .academic-manage-list li span {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .academic-group-header {
+      margin-top: 16px;
+      padding: 10px 0 8px !important;
+      color: #1a2a6c;
+      font: 700 13px 'Manrope', sans-serif;
+      letter-spacing: 0.03em;
+      border-bottom: 2px solid #d0daf0 !important;
+      pointer-events: none;
+    }
+
+    .academic-group-header:first-child {
+      margin-top: 0;
+    }
+
+    .academic-programme-item {
+      padding-left: 12px !important;
+    }
+
+    .academic-edit-button {
+      flex: 0 0 auto;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      padding: 7px 12px;
+      color: #1a2a6c;
+      background: #fff;
+      font: 600 13px 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .academic-edit-button:hover {
+      border-color: #1a2a6c;
+      background: #edf1ff;
+    }
+
+    .academic-delete-button {
+      flex: 0 0 auto;
+      border: 0;
+      border-radius: 10px;
+      padding: 7px 12px;
+      color: #8e3838;
+      background: #fbeaea;
+      font: 600 13px 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+
+    .academic-delete-button:hover {
+      background: #f5d0d0;
+    }
+
+    .academic-row-actions {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 6px;
+    }
+
+    .academic-row-actions button:disabled {
+      opacity: 0.6;
+      cursor: wait;
+    }
+
+    .admin-academic-grid {
+      align-items: start;
+      gap: 20px;
+    }
+
+    .admin-academic-grid .content-panel {
+      padding: 24px;
+    }
+
+    .admin-academic-grid h3 {
+      margin: 18px 0 12px;
+    }
+
+    .admin-academic-grid .section-kicker {
+      margin-bottom: 4px;
+    }
+
+    .data-form label {
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #405a77;
+    }
+
+    .data-form input,
+    .data-form select {
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .data-form .form-action {
+      margin-top: 14px;
+    }
+
+    #programme-form textarea {
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    @media (max-width: 760px) {
+      .admin-academic-grid {
+        grid-template-columns: 1fr !important;
+      }
+
+      .academic-row-actions {
+        flex-wrap: wrap;
+      }
+
+      .academic-manage-list li:not(.academic-group-header) {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
   `;
   document.head.appendChild(style);
 

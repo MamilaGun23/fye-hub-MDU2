@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const db = window.fyeSupabase;
   if (!db) return;
 
@@ -16,6 +17,17 @@
 
   function formatEventTime(request) {
     return `${request.event_date} · ${String(request.event_time).slice(0, 5)} · ${request.venue}`;
+  }
+
+  function requestStart(request) {
+    const value = Date.parse(`${request.event_date}T${String(request.event_time || '00:00').slice(0,8)}+02:00`);
+    return Number.isFinite(value) ? value : Infinity;
+  }
+
+  function orderRequests(requests, archived = request => requestStart(request) < Date.now()) {
+    return [...requests].sort((a,b) => Number(archived(a))-Number(archived(b))
+      || (archived(a) ? requestStart(b)-requestStart(a) : requestStart(a)-requestStart(b))
+      || String(a.id).localeCompare(String(b.id)));
   }
 
   async function getCurrentUser() {
@@ -47,16 +59,78 @@
     if (!requestList || !feedback || !refreshButton || !eventList || !statusFilter) return;
 
     let publishedEvents = [];
+    let approvedCancellations = new Map();
+    const publishedPanel = document.querySelector('#published-event-management');
+    const calendarPage = document.querySelector('.page-view[data-page="calendar"]');
+    if (publishedPanel && calendarPage) calendarPage.appendChild(publishedPanel);
+    const calendarFeedback = makeTextElement('p', 'form-feedback', '');
+    calendarFeedback.setAttribute('role', 'status');
+    calendarFeedback.setAttribute('aria-live', 'polite');
+    publishedPanel?.prepend(calendarFeedback);
+
+    async function loadCancellationRequests() {
+      const list = document.querySelector('#event-cancellation-list');
+      if (!list) return;
+      list.textContent = 'Loading cancellation requests…';
+      const { data, error } = await db.from('event_cancellation_requests')
+        .select('id, calendar_event_id, mentor_id, reason, status, created_at')
+        .in('status', ['pending', 'approved']).order('created_at');
+      if (error) { list.textContent = `Could not load cancellation requests: ${error.message}`; return; }
+      approvedCancellations = new Map((data || []).filter((item) => item.status === 'approved').map((item) => [String(item.calendar_event_id), item]));
+      list.replaceChildren();
+      if (!data?.length) { list.textContent = 'No cancellation requests are waiting for action.'; return; }
+      const { data: events, error: eventError } = await db.from('calendar_events').select('id, title, starts_at')
+        .in('id', [...new Set(data.map((item) => item.calendar_event_id))]);
+      if (eventError) { list.textContent = `Could not load cancellation events: ${eventError.message}`; return; }
+      for (const request of data) {
+        const event = (events || []).find((item) => String(item.id) === String(request.calendar_event_id));
+        const card = document.createElement('article');
+        card.className = 'content-panel';
+        card.append(makeTextElement('h4', '', event?.title || 'Event'), makeTextElement('p', 'summary-text', request.reason));
+        if (request.status === 'approved') {
+          card.appendChild(makeTextElement('p', 'summary-text', 'Approved — remove the event from the calendar to complete cancellation and notify attendees.'));
+          const open = makeTextElement('button', 'form-action', 'Open event in calendar');
+          open.type = 'button';
+          open.addEventListener('click', () => {
+            document.querySelector('.nav-link[data-view="calendar"]')?.click();
+            window.dispatchEvent(new CustomEvent('fye:open-calendar-event', { detail: { id: request.calendar_event_id } }));
+            window.dispatchEvent(new CustomEvent('fye:manage-calendar-event', { detail: { id: request.calendar_event_id } }));
+          });
+          card.appendChild(open);
+        } else {
+          const actions = document.createElement('div');
+          actions.className = 'event-review-actions';
+          for (const approve of [true, false]) {
+            const button = makeTextElement('button', approve ? 'form-action' : 'event-decline-button', approve ? 'Approve cancellation' : 'Decline cancellation');
+            button.type = 'button';
+            button.addEventListener('click', async () => {
+              const note = approve ? null : window.prompt('Reason for declining cancellation:');
+              if (!approve && !note?.trim()) return;
+              actions.querySelectorAll('button').forEach((item) => { item.disabled = true; });
+              const { error: reviewError } = await db.rpc('review_event_cancellation', { p_request_id: request.id, p_approve: approve, p_note: note?.trim() || null });
+              if (reviewError) {
+                feedback.textContent = `Could not review cancellation: ${reviewError.message}`;
+                actions.querySelectorAll('button').forEach((item) => { item.disabled = false; });
+                return;
+              }
+              await loadCancellationRequests();
+            });
+            actions.appendChild(button);
+          }
+          card.appendChild(actions);
+        }
+        list.appendChild(card);
+      }
+    }
 
     async function loadRequests() {
       requestList.replaceChildren(makeTextElement('p', 'summary-text', 'Loading event requests…'));
       feedback.textContent = '';
 
-      const { data: requests, error } = await db
-        .from('event_requests')
-        .select('id, mentor_id, title, purpose, event_date, event_time, venue, created_at')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: true });
+      let requests, error;
+      try { requests = await window.fyeAcademic.all('event_requests',
+        'id, mentor_id, title, purpose, event_date, event_time, venue, created_at', q => q.eq('status','pending')); }
+      catch (loadError) { error = loadError; }
 
       if (error) {
         requestList.replaceChildren(makeTextElement('p', 'summary-text', 'Could not load event requests.'));
@@ -78,10 +152,11 @@
       const mentorById = new Map((mentors || []).map((mentor) => [mentor.id, mentor]));
       if (mentorError) console.error('Could not load event request mentors:', mentorError);
 
-      for (const request of requests) {
+      for (const request of orderRequests(requests)) {
         const mentor = mentorById.get(request.mentor_id);
+        const isPast = requestStart(request) < Date.now();
         const card = document.createElement('article');
-        card.className = 'content-panel event-request-card';
+        card.className = `content-panel event-request-card${isPast ? ' is-past' : ''}`;
         card.appendChild(makeTextElement('p', 'card-kicker', `REQUESTED BY ${mentor?.full_name || mentor?.email || 'MENTOR'}`));
         card.appendChild(makeTextElement('h3', '', request.title));
         card.appendChild(makeTextElement('p', 'summary-text', formatEventTime(request)));
@@ -142,11 +217,14 @@
       for (const event of visibleEvents) {
         const attendance = attendanceByEvent.get(event.id) || [];
         const validAttendance = attendance.filter((record) => record.is_valid);
+        const studentAttendance = validAttendance.filter((record) => profilesById.get(record.attendee_id)?.role === 'student');
         const organizer = profilesById.get(event.organizer_id);
+        const isPast = new Date(event.ends_at || event.starts_at) < new Date() || event.event_status === 'completed';
         const card = document.createElement('article');
-        card.className = 'content-panel event-request-card';
+        card.className = `content-panel event-request-card${isPast ? ' is-past' : ''}`;
 
         const heading = document.createElement('div');
+        card.dataset.calendarEventId = String(event.id);
         heading.className = 'event-management-heading';
         heading.append(
           makeTextElement('h3', '', event.title),
@@ -155,7 +233,7 @@
         card.appendChild(heading);
         card.appendChild(makeTextElement('p', 'summary-text', `${new Date(event.starts_at).toLocaleString('en-ZA')} · ${event.location || 'Venue not set'}`));
         card.appendChild(makeTextElement('p', 'event-request-purpose', event.description || 'No event purpose provided.'));
-        card.appendChild(makeTextElement('p', 'summary-text', `Organiser: ${organizer?.full_name || organizer?.email || 'Supervisor'} · ${validAttendance.length} checked in`));
+        card.appendChild(makeTextElement('p', 'summary-text', `Organiser: ${organizer?.full_name || organizer?.email || 'Supervisor'} · ${studentAttendance.length} students attended · ${validAttendance.length} total check-ins`));
         card.appendChild(makeTextElement('p', 'card-kicker', event.organizer_id && event.organizer_id !== event.created_by ? 'MENTOR REQUEST' : 'SUPERVISOR-CREATED'));
 
         if (event.completion_note) {
@@ -208,7 +286,7 @@
           const completeButton = makeTextElement('button', 'form-action', 'Mark complete');
           completeButton.type = 'button';
           actionRow.appendChild(completeButton);
-          const cancelButton = makeTextElement('button', 'event-decline-button', 'Cancel event');
+          const cancelButton = makeTextElement('button', 'event-decline-button', 'Remove event from calendar');
           cancelButton.type = 'button';
           actionRow.appendChild(cancelButton);
 
@@ -275,16 +353,16 @@
             });
             saveButton.disabled = false;
             if (error) {
-              feedback.textContent = `Could not update this event: ${error.message}`;
+              calendarFeedback.textContent = `Could not update this event: ${error.message}`;
               return;
             }
-            feedback.textContent = 'Event updated. Students and the mentor have been notified.';
+            calendarFeedback.textContent = 'Event updated. Students and the mentor have been notified.';
             await loadPublishedEvents();
           });
           actionRow.appendChild(editDetails);
 
           cancelButton.addEventListener('click', async () => {
-            const reason = window.prompt('Why is this event being cancelled?');
+            const reason = window.prompt('Why is this event being cancelled?', approvedCancellations.get(String(event.id))?.reason || '');
             if (!reason?.trim()) return;
             cancelButton.disabled = true;
             const { error } = await db.rpc('cancel_supervisor_event', {
@@ -292,12 +370,14 @@
               p_reason: reason.trim()
             });
             if (error) {
-              feedback.textContent = `Could not cancel this event: ${error.message}`;
+              calendarFeedback.textContent = `Could not cancel this event: ${error.message}`;
               cancelButton.disabled = false;
               return;
             }
-            feedback.textContent = 'Event cancelled. Students and the mentor have been notified.';
+            calendarFeedback.textContent = 'Event cancelled. Students and the mentor have been notified.';
             await loadPublishedEvents();
+            await loadCancellationRequests();
+            window.dispatchEvent(new CustomEvent('fye:calendar-refresh'));
           });
 
           completeButton.addEventListener('click', async () => {
@@ -308,11 +388,11 @@
               p_note: note.trim() || null
             });
             if (error) {
-              feedback.textContent = `Could not complete this event: ${error.message}`;
+              calendarFeedback.textContent = `Could not complete this event: ${error.message}`;
               completeButton.disabled = false;
               return;
             }
-            feedback.textContent = 'Event marked complete.';
+            calendarFeedback.textContent = 'Event marked complete.';
             await loadPublishedEvents();
           });
         }
@@ -320,7 +400,7 @@
         card.appendChild(actionRow);
         const attendanceSection = document.createElement('section');
         attendanceSection.className = 'event-attendance-section';
-        attendanceSection.appendChild(makeTextElement('h4', '', `Attendance (${validAttendance.length})`));
+        attendanceSection.appendChild(makeTextElement('h4', '', `Attendance: ${studentAttendance.length} students · ${validAttendance.length} total`));
         const exportButton = makeTextElement('button', 'form-action', 'Export attendance CSV');
         exportButton.type = 'button';
         exportButton.disabled = validAttendance.length === 0;
@@ -353,6 +433,17 @@
           URL.revokeObjectURL(downloadUrl);
         });
         attendanceSection.appendChild(exportButton);
+        if (['scheduled', 'completed'].includes(event.event_status) && window.fyeManualAttendance) {
+          attendanceSection.appendChild(window.fyeManualAttendance.render(event, attendance, async () => {
+            calendarFeedback.textContent = 'Attendance recorded with an audit reason.';
+            try {
+              if (await loadPublishedEvents() === false) throw new Error('The event list is unavailable');
+            } catch (error) {
+              calendarFeedback.textContent = 'Attendance was saved, but the event list could not refresh. Refresh events before making further corrections.';
+              throw error;
+            }
+          }));
+        }
         const attendeeList = document.createElement('div');
         attendeeList.className = 'event-attendee-list';
         if (!attendance.length) {
@@ -383,14 +474,17 @@
                 p_reason: reason.trim()
               });
               if (error) {
-                feedback.textContent = `Could not correct attendance: ${error.message}`;
+                calendarFeedback.textContent = `Could not correct attendance: ${error.message}`;
                 correctButton.disabled = false;
                 return;
               }
-              feedback.textContent = 'Attendance corrected with an audit reason.';
+              calendarFeedback.textContent = 'Attendance corrected with an audit reason.';
               await loadPublishedEvents();
             });
-            row.appendChild(correctButton);
+            const correctionActions = document.createElement('div');
+            correctionActions.className = 'attendance-correction-actions';
+            correctionActions.appendChild(correctButton);
+            row.appendChild(correctionActions);
           }
           attendeeList.appendChild(row);
         }
@@ -418,19 +512,19 @@
     async function loadPublishedEvents() {
       eventList.replaceChildren(makeTextElement('p', 'summary-text', 'Loading published events…'));
       const eventsResult = await db.from('calendar_events')
-          .select('id, title, description, starts_at, ends_at, location, event_status, attendance_token, organizer_id, created_by, completion_note, mentor_outcome, cancellation_reason')
+          .select('id, title, description, starts_at, ends_at, location, event_status, attendance_token, organizer_id, created_by, completion_note, mentor_outcome, cancellation_reason, faculty_id, faculty_only')
           .eq('event_type', 'event')
           .order('starts_at', { ascending: false });
       if (eventsResult.error) {
         const error = eventsResult.error;
         eventList.replaceChildren(makeTextElement('p', 'summary-text', `Could not load events: ${error.message}`));
-        return;
+        return false;
       }
       publishedEvents = eventsResult.data || [];
       const eventIds = publishedEvents.map((event) => event.id);
       if (!eventIds.length) {
         renderPublishedEvents(new Map(), new Map(), new Map());
-        return;
+        return true;
       }
       const [attendanceResult, activityResult] = await Promise.all([
         db.from('event_attendance')
@@ -445,7 +539,7 @@
       if (attendanceResult.error || activityResult.error) {
         const error = attendanceResult.error || activityResult.error;
         eventList.replaceChildren(makeTextElement('p', 'summary-text', `Could not load event history: ${error.message}`));
-        return;
+        return false;
       }
       const attendance = attendanceResult.data || [];
       const activities = activityResult.data || [];
@@ -467,17 +561,18 @@
         ...activities.map((activity) => activity.actor_id).filter(Boolean)
       ])];
       const { data: profiles, error: profilesError } = profileIds.length
-        ? await db.from('profiles').select('id, full_name, email').in('id', profileIds)
+        ? await db.from('profiles').select('id, full_name, email, role').in('id', profileIds)
         : { data: [], error: null };
       if (profilesError) {
         eventList.replaceChildren(makeTextElement('p', 'summary-text', `Could not load event people: ${profilesError.message}`));
-        return;
+        return false;
       }
       renderPublishedEvents(
         attendanceByEvent,
         new Map((profiles || []).map((profile) => [profile.id, profile])),
         activityByEvent
       );
+      return true;
     }
 
     async function reviewRequest(request, decision, reasonField, actions) {
@@ -512,12 +607,23 @@
     }
 
     refreshButton.addEventListener('click', async () => {
-      await Promise.all([loadRequests(), loadPublishedEvents()]);
+      await Promise.all([loadRequests(), loadPublishedEvents(), loadCancellationRequests()]);
     });
     statusFilter.addEventListener('change', loadPublishedEvents);
-    window.addEventListener('fye:calendar-refresh', loadPublishedEvents);
+    function refreshPublishedWhenIdle() {
+      if (eventList.contains(document.activeElement) || eventList.querySelector('details[open]')) return;
+      return loadPublishedEvents();
+    }
+    window.addEventListener('fye:calendar-refresh', refreshPublishedWhenIdle);
+    window.addEventListener('fye:manage-calendar-event', async (event) => {
+      statusFilter.value = 'scheduled';
+      await loadPublishedEvents();
+      [...eventList.children].find((card) => card.dataset.calendarEventId === String(event.detail?.id))
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    window.setInterval(() => { refreshPublishedWhenIdle(); loadCancellationRequests(); }, 60000);
     getCurrentUser()
-      .then(async () => Promise.all([loadRequests(), loadPublishedEvents()]))
+      .then(async () => Promise.all([loadRequests(), loadPublishedEvents(), loadCancellationRequests()]))
       .catch((error) => { feedback.textContent = error.message; });
     return;
   }
@@ -525,29 +631,33 @@
   const calendarPage = document.querySelector('.page-view[data-page="calendar"]');
   if (!calendarPage) return;
 
-  const requestPanel = document.createElement('article');
+  const existingList = document.querySelector('#mentor-event-requests');
+  const requestPanel = existingList?.closest('article') || document.createElement('article');
   requestPanel.className = 'content-panel';
+  const mentorRequestList = existingList || document.createElement('div');
+  requestPanel.replaceChildren();
   requestPanel.appendChild(makeTextElement('p', 'section-kicker', 'SUPERVISOR REVIEW'));
-  requestPanel.appendChild(makeTextElement('h3', '', 'My event requests'));
-  const mentorRequestList = document.createElement('div');
+  const requestHeading = makeTextElement('h3', '', 'My event requests ');
+  const requestCount = makeTextElement('span','collection-count','0');
+  requestHeading.appendChild(requestCount);
+  requestPanel.appendChild(requestHeading);
   mentorRequestList.id = 'mentor-event-requests';
   mentorRequestList.setAttribute('aria-live', 'polite');
   mentorRequestList.appendChild(makeTextElement('p', 'summary-text', 'Loading your event requests…'));
   requestPanel.appendChild(mentorRequestList);
   const calendarPanel = calendarPage.querySelector('.content-panel');
-  if (calendarPanel) calendarPanel.insertAdjacentElement('afterend', requestPanel);
-  else calendarPage.appendChild(requestPanel);
+  if (!requestPanel.isConnected) {
+    if (calendarPanel) calendarPanel.insertAdjacentElement('afterend', requestPanel);
+    else calendarPage.appendChild(requestPanel);
+  }
 
   async function loadMentorRequests() {
+    const historyOpen = mentorRequestList.querySelector('.request-history')?.open || false;
     mentorRequestList.replaceChildren(makeTextElement('p', 'summary-text', 'Loading your event requests…'));
     try {
       const user = await getCurrentUser();
-      const { data: requests, error } = await db
-        .from('event_requests')
-        .select('id, title, purpose, event_date, event_time, venue, status, supervisor_note, calendar_event_id, created_at')
-        .eq('mentor_id', user.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
+      const requests = await window.fyeAcademic.all('event_requests',
+        'id, title, purpose, event_date, event_time, venue, status, supervisor_note, calendar_event_id, created_at', q => q.eq('mentor_id',user.id));
 
       const calendarEventIds = [...new Set((requests || []).map((request) => request.calendar_event_id).filter(Boolean))];
       const publishedResult = calendarEventIds.length
@@ -557,20 +667,50 @@
         : { data: [], error: null };
       if (publishedResult.error) throw publishedResult.error;
       const publishedById = new Map((publishedResult.data || []).map((event) => [event.id, event]));
+      const cancellationResult = calendarEventIds.length
+        ? await db.from('event_cancellation_requests').select('calendar_event_id, status, reason, review_note, created_at')
+          .in('calendar_event_id', calendarEventIds).order('created_at', { ascending: false })
+        : { data: [], error: null };
 
+      // Cancelled calendar rows are hidden from mentors by RLS. Their own
+      // completed cancellation request still supplies the correct history state.
+      for (const cancellation of cancellationResult.data || []) {
+        if (cancellation.status === 'completed' && !publishedById.has(cancellation.calendar_event_id)) {
+          publishedById.set(cancellation.calendar_event_id, {event_status:'cancelled',cancellation_reason:cancellation.reason});
+        }
+      }
+      const archived = request => {
+        const event = publishedById.get(request.calendar_event_id);
+        return request.status === 'rejected' || ['completed','cancelled'].includes(event?.event_status)
+          || (event?.ends_at ? Date.parse(event.ends_at) < Date.now() : requestStart(request) < Date.now());
+      };
+      const ordered = orderRequests(requests || [], archived);
+      const activeCount = ordered.filter(request => !archived(request)).length;
+      requestCount.textContent = String(activeCount);
+      requestCount.title = `${activeCount} current or upcoming requests`;
       mentorRequestList.replaceChildren();
       if (!requests?.length) {
         mentorRequestList.appendChild(makeTextElement('p', 'summary-text', 'You have not submitted any event requests yet.'));
         return;
       }
 
-      for (const request of requests) {
+      const upcoming = document.createElement('div');upcoming.className='event-request-list';
+      const history = document.createElement('details');history.className='request-history collection-details';history.open=historyOpen;
+      history.appendChild(makeTextElement('summary','',`Past and closed requests (${ordered.length-activeCount})`));
+      const historyList = document.createElement('div');historyList.className='event-request-list';history.appendChild(historyList);
+      if (!activeCount) upcoming.appendChild(makeTextElement('p','summary-text','No current or upcoming event requests.'));
+      mentorRequestList.appendChild(upcoming);
+      if (ordered.length>activeCount) mentorRequestList.appendChild(history);
+      for (const request of ordered) {
+        const published = publishedById.get(request.calendar_event_id);
+        const isPast = archived(request);
         const card = document.createElement('article');
-        card.className = 'mentor-event-request';
+        card.className = `mentor-event-request${isPast ? ' is-past' : ''}`;
         card.appendChild(makeTextElement('h4', '', request.title));
         card.appendChild(makeTextElement('p', 'summary-text', formatEventTime(request)));
         card.appendChild(makeTextElement('p', 'summary-text', request.purpose));
-        const status = makeTextElement('span', `event-request-status status-${request.status}`, request.status);
+        const displayStatus = published?.event_status === 'cancelled' ? 'cancelled' : request.status;
+        const status = makeTextElement('span', `event-request-status status-${displayStatus}`, displayStatus);
         card.appendChild(status);
         if (request.supervisor_note) {
           card.appendChild(makeTextElement(
@@ -589,6 +729,38 @@
             card.appendChild(makeTextElement('p', 'summary-text', 'This event is complete.'));
           } else {
             card.appendChild(makeTextElement('p', 'summary-text', 'Your QR code has been sent to your notifications.'));
+            const cancellation = (cancellationResult.data || []).find((item) => String(item.calendar_event_id) === String(request.calendar_event_id));
+            if (cancellationResult.error) {
+              card.appendChild(makeTextElement('p', 'form-feedback', `Cancellation requests are unavailable: ${cancellationResult.error.message}`));
+            } else if (cancellation && ['pending','approved'].includes(cancellation.status)) {
+              card.appendChild(makeTextElement('p', 'summary-text', cancellation.status === 'pending'
+                ? `Cancellation requested: ${cancellation.reason}. Waiting for supervisor review.`
+                : 'Cancellation approved. Waiting for the supervisor to remove this event from the calendar.'));
+            } else if (published?.event_status === 'scheduled') {
+              if (cancellation?.status === 'declined') card.appendChild(makeTextElement('p', 'summary-text', `Cancellation declined: ${cancellation.review_note || 'Contact the supervisor.'}`));
+              const cancelForm = document.createElement('form');
+              cancelForm.className = 'event-review-form';
+              const reason = document.createElement('textarea');
+              reason.required = true;
+              reason.maxLength = 1000;
+              const label = makeTextElement('label', '', 'Reason for requesting event cancellation');
+              label.appendChild(reason);
+              const send = makeTextElement('button', 'event-decline-button', 'Request event cancellation');
+              send.type = 'submit';
+              const status = makeTextElement('p', 'form-feedback', '');
+              status.setAttribute('role', 'status');
+              cancelForm.append(label, send, status);
+              cancelForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                if (!reason.value.trim() || send.disabled) return;
+                send.disabled = true;
+                const { error } = await db.rpc('request_event_cancellation', { p_event_id: request.calendar_event_id, p_reason: reason.value.trim() });
+                if (error) { status.textContent = `Could not request cancellation: ${error.message}`; send.disabled = false; return; }
+                window.dispatchEvent(new CustomEvent('fye:counts-refresh'));
+                await loadMentorRequests();
+              });
+              card.appendChild(cancelForm);
+            }
           }
           if (published?.mentor_outcome) {
             card.appendChild(makeTextElement('p', 'summary-text', `Your event outcome: ${published.mentor_outcome}`));
@@ -622,7 +794,7 @@
             card.appendChild(outcomeForm);
           }
         }
-        mentorRequestList.appendChild(card);
+        (isPast ? historyList : upcoming).appendChild(card);
       }
     } catch (error) {
       console.error('Could not load mentor event requests:', error);
@@ -631,5 +803,8 @@
   }
 
   window.addEventListener('fye:event-request-created', loadMentorRequests);
+  window.setInterval(() => {
+    if (!mentorRequestList.contains(document.activeElement)) loadMentorRequests();
+  }, 60000);
   loadMentorRequests();
 })();

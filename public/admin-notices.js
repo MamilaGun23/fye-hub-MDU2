@@ -1,4 +1,5 @@
-(() => {
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   const db = window.fyeSupabase;
   const form = document.querySelector('#notice-form');
   if (!db || !form) return;
@@ -21,6 +22,7 @@
 
   function noticeStatus(notice) {
     const now = Date.now();
+    if (notice.ends_at && new Date(notice.ends_at).getTime() <= now) return 'Expired — stopped';
     if (!notice.is_active) return 'Stopped';
     if (new Date(notice.starts_at).getTime() > now) return 'Scheduled';
     if (notice.ends_at && new Date(notice.ends_at).getTime() <= now) return 'Expired';
@@ -28,7 +30,9 @@
   }
 
   async function loadNotices() {
-    noticeList.innerHTML = '<tr><td colspan="4">Loading notices…</td></tr>';
+    const { error: expiryError } = await db.rpc('expire_system_notices');
+    if (expiryError) console.warn('Could not synchronise expired updates:', expiryError);
+    noticeList.innerHTML = '<tr><td colspan="4">Loading updates…</td></tr>';
 
     const { data, error } = await db
       .from('system_notices')
@@ -36,9 +40,9 @@
       .order('starts_at', { ascending: false });
 
     if (error) {
-      console.error('Could not load notices:', error);
-      noticeList.innerHTML = '<tr><td colspan="4">Notice list unavailable.</td></tr>';
-      feedback.textContent = `Could not load notices: ${error.message}`;
+      console.error('Could not load updates:', error);
+      noticeList.innerHTML = '<tr><td colspan="4">Update list unavailable.</td></tr>';
+      feedback.textContent = `Could not load updates: ${error.message}`;
       return;
     }
 
@@ -47,7 +51,7 @@
       const row = document.createElement('tr');
       const cell = document.createElement('td');
       cell.colSpan = 4;
-      cell.textContent = 'No notices have been published yet.';
+      cell.textContent = 'No updates have been published yet.';
       row.appendChild(cell);
       noticeList.appendChild(row);
       return;
@@ -68,11 +72,12 @@
       row.appendChild(statusCell);
 
       const actionCell = document.createElement('td');
-      if (notice.is_active) {
+      actionCell.className = 'notice-actions';
+      if (notice.is_active && (!notice.ends_at || new Date(notice.ends_at).getTime() > Date.now())) {
         const stopButton = document.createElement('button');
         stopButton.type = 'button';
         stopButton.className = 'notice-stop-button';
-        stopButton.textContent = 'Stop notice';
+        stopButton.textContent = 'Stop update';
         stopButton.addEventListener('click', () => stopNotice(notice.id, stopButton));
         actionCell.appendChild(stopButton);
       } else {
@@ -86,7 +91,7 @@
 
   async function stopNotice(id, button) {
     button.disabled = true;
-    feedback.textContent = 'Stopping notice…';
+    feedback.textContent = 'Stopping update…';
 
     const { error } = await db
       .from('system_notices')
@@ -94,14 +99,15 @@
       .eq('id', id);
 
     if (error) {
-      console.error('Could not stop notice:', error);
-      feedback.textContent = `Could not stop notice: ${error.message}`;
+      console.error('Could not stop update:', error);
+      feedback.textContent = `Could not stop update: ${error.message}`;
       button.disabled = false;
       return;
     }
 
-    feedback.textContent = 'Notice stopped.';
+    feedback.textContent = 'Update stopped.';
     await loadNotices();
+    document.dispatchEvent(new CustomEvent('fye:notices-updated'));
   }
 
   form.addEventListener('submit', async (event) => {
@@ -109,13 +115,23 @@
     feedback.textContent = '';
 
     const title = document.querySelector('#notice-title').value.trim();
+    if (!['University update', 'Application updates'].includes(title)) {
+      feedback.textContent = 'Choose an update title.';
+      return;
+    }
     const message = document.querySelector('#notice-message').value.trim();
     const startsValue = document.querySelector('#notice-starts-at').value;
     const endsValue = document.querySelector('#notice-ends-at').value;
     const button = form.querySelector('button[type="submit"]');
 
     const startsAt = startsValue ? new Date(startsValue) : null;
-    const endsAt = endsValue ? new Date(endsValue) : null;
+    const durationValue = document.querySelector('#notice-duration-days').value;
+    const duration = durationValue ? Number(durationValue) : null;
+    if (duration !== null && (!Number.isInteger(duration) || duration < 1 || duration > 365)) {
+      feedback.textContent = 'Choose a whole number of days from 1 to 365.';
+      return;
+    }
+    const endsAt = duration !== null && startsAt ? new Date(startsAt.getTime() + duration * 86400000) : endsValue ? new Date(endsValue) : null;
     if (!startsAt || Number.isNaN(startsAt.getTime())) {
       feedback.textContent = 'Choose when the notice should start.';
       return;
@@ -133,7 +149,7 @@
 
     button.disabled = true;
     button.textContent = 'Publishing…';
-    feedback.textContent = 'Publishing notice…';
+    feedback.textContent = 'Publishing update…';
 
     const { error } = await db.from('system_notices').insert({
       title,
@@ -145,20 +161,24 @@
     });
 
     if (error) {
-      console.error('Could not publish notice:', error);
-      feedback.textContent = `Could not publish notice: ${error.message}`;
+      console.error('Could not publish update:', error);
+      feedback.textContent = `Could not publish update: ${error.message}`;
     } else {
-      feedback.textContent = 'Notice published or scheduled successfully.';
+      feedback.textContent = 'Update published or scheduled successfully.';
       form.reset();
       document.querySelector('#notice-starts-at').value = localDateTimeValue(new Date());
       await loadNotices();
+      document.dispatchEvent(new CustomEvent('fye:notices-updated'));
     }
 
     button.disabled = false;
-    button.textContent = 'Publish notice';
+    button.textContent = 'Publish update';
   });
 
   document.querySelector('#notices-refresh').addEventListener('click', loadNotices);
+  document.querySelector('#notice-duration-days').addEventListener('input', () => { document.querySelector('#notice-ends-at').value = ''; });
+  document.querySelector('#notice-ends-at').addEventListener('input', () => { document.querySelector('#notice-duration-days').value = ''; });
+  window.setInterval(loadNotices, 60000);
 
   const style = document.createElement('style');
   style.textContent = `

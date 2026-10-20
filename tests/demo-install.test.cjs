@@ -1,0 +1,42 @@
+const test=require('node:test');const assert=require('node:assert/strict');const fs=require('node:fs');const path=require('node:path');const {PGlite}=require('@electric-sql/pglite');
+const read=name=>fs.readFileSync(path.join(__dirname,'..',name),'utf8');
+test('single install applies atomically, preserves legacy authority/history and refuses schema drift',async t=>{
+ const db=new PGlite();t.after(()=>db.close());await db.exec(read('tests/fixtures/deployed-contract.sql'));
+ await db.exec(`CREATE SCHEMA cron;CREATE TABLE cron.jobs(name text PRIMARY KEY,schedule text,command text);
+ CREATE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE plpgsql AS $$ BEGIN INSERT INTO cron.jobs VALUES($1,$2,$3) ON CONFLICT(name) DO UPDATE SET schedule=EXCLUDED.schedule,command=EXCLUDED.command;RETURN 1;END $$;
+ INSERT INTO faculties(id,name) OVERRIDING SYSTEM VALUE VALUES(1,'Agriculture and Natural Sciences'),(2,'Education'),(3,'Economics'),(7,'Prototype medicine');
+ INSERT INTO auth.users(id,email,email_confirmed_at) VALUES('20000000-0000-0000-0000-000000000001','old-admin@example.test',now()),('20000000-0000-0000-0000-000000000002','old-mentor@example.test',now()),('20000000-0000-0000-0000-000000000003','old-supervisor@example.test',now()),('20000000-0000-0000-0000-000000000004','old-student@example.test',now());
+ UPDATE profiles SET role='admin' WHERE id='20000000-0000-0000-0000-000000000001';
+ UPDATE profiles SET role='supervisor' WHERE id='20000000-0000-0000-0000-000000000003';
+ SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000001',false);
+ UPDATE profiles SET role='mentor',study_year=2 WHERE id='20000000-0000-0000-0000-000000000002';
+ UPDATE profiles SET mentor_approval_status='approved' WHERE id='20000000-0000-0000-0000-000000000002';
+ INSERT INTO mentor_applications(applicant_id,status,study_year,is_legacy) VALUES('20000000-0000-0000-0000-000000000002','approved',2,true);
+ SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000003',false);
+ INSERT INTO mentor_assignments(student_id,mentor_id,assigned_by,assigned_at) VALUES('20000000-0000-0000-0000-000000000004','20000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000003','2025-02-01T10:00:00Z');
+ SELECT set_config('request.jwt.claim.sub','',false);`);
+ const classification=read('database/20261019030000_reviewed_programme_qualifications.sql');
+ const programmes=[...classification.matchAll(/\((\d+)::bigint,'((?:[^']|'')*)'\)/g)].map(m=>({id:Number(m[1]),name:m[2].replaceAll("''","'")}));
+ assert.equal(programmes.length,32);
+ for(const p of programmes){const faculty=p.id===35?7:p.id===31?2:p.id>=18?3:1;await db.query('INSERT INTO programmes(id,faculty_id,name) OVERRIDING SYSTEM VALUE VALUES($1,$2,$3)',[p.id,faculty,p.name]);}
+ const bundle=read('database/DEMO_INSTALL.sql');try{await db.exec(bundle);}catch(e){delete e.query;throw e;}
+ const status=(await db.query('SELECT demo_seed_status() AS value')).rows[0].value;
+ assert.equal(status.version,2);assert.equal(status.schema_intact,true);assert.equal(status.workflows,true);assert.equal(status.programmes.length,32);
+ assert.equal(status.programmes.filter(p=>!p.first_time_entry).length,7);
+ assert.equal(status.programmes.find(p=>p.id==='35').max_study_year,6);
+ assert.equal((await db.query("SELECT mentor_application_is_approved('20000000-0000-0000-0000-000000000002') AS ok")).rows[0].ok,true);
+ assert.equal((await db.query('SELECT count(*)::integer AS n FROM mentor_applications')).rows[0].n,1);
+ assert.equal((await db.query('SELECT count(*)::integer AS n FROM active_mentor_assignments')).rows[0].n,1,'Unknown-year legacy matches remain available until reviewed.');
+ await db.exec(`SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000003',false);SELECT review_legacy_assignment_year((SELECT id FROM mentor_assignments LIMIT 1),extract(year FROM fye_today())::integer);SELECT set_config('request.jwt.claim.sub','',false);`);
+ const legacy=(await db.query("SELECT assigned_at='2025-02-01T10:00:00Z'::timestamptz AS preserved,academic_year IS NOT NULL AS reviewed,effective_end_at>now() AS expires,needs_reassignment FROM mentor_assignments")).rows[0];
+ assert.deepEqual(legacy,{preserved:true,reviewed:true,expires:true,needs_reassignment:true});
+ assert.equal((await db.query('SELECT count(*)::integer AS n FROM active_mentor_assignments')).rows[0].n,1,'Reviewing a current-year legacy match preserves access and flags unverified eligibility for reassignment.');
+ await db.exec(`SELECT set_config('request.jwt.claim.sub','20000000-0000-0000-0000-000000000003',false);SELECT manage_mentor_appointment('20000000-0000-0000-0000-000000000002','end','Legacy appointment ended by supervisor.');SELECT set_config('request.jwt.claim.sub','',false);`);
+ await db.exec(bundle);
+ assert.equal((await db.query("SELECT mentor_application_is_approved('20000000-0000-0000-0000-000000000002') AS ok")).rows[0].ok,false,'Reinstall must never recreate a supervisor-ended appointment from historical approval.');
+ assert.equal((await db.query('SELECT count(*)::integer AS n FROM mentor_applications')).rows[0].n,1);
+ assert.equal((await db.query('SELECT count(*)::integer AS n FROM cron.jobs')).rows[0].n,1);
+ assert.equal((await db.query('SELECT demo_seed_status() AS value')).rows[0].value.schema_intact,true);
+ await db.exec('ALTER TABLE profiles ADD COLUMN unexpected_schema_change text;');
+ assert.equal((await db.query('SELECT demo_seed_status() AS value')).rows[0].value.schema_intact,false);
+});

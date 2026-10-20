@@ -6,17 +6,27 @@
   <meta name="theme-color" content="#f2f6fc">
   <title>Supervisor Dashboard | FYE Hub</title>
   <link rel="stylesheet" href="student.css">
+  <link rel="stylesheet" href="ui-theme.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="supabase-config.js" defer></script>
+  <script src="academic.js" defer></script>
+  <script src="auth.js" defer></script>
+  <script src="directory.js" defer></script>
+  <script src="dashboard-counts.js" defer></script>
+  <script src="dashboard-ui.js" defer></script>
   <script src="calendar.js" defer></script>
   <script src="supervisor-approvals.js" defer></script>
+  <script src="mentor-evidence.js" defer></script>
+  <script src="manual-attendance.js" defer></script>
   <script src="event-workflow.js" defer></script>
   <script src="notices.js" defer></script>
   <script src="supervisor.js" defer></script>
+  <script src="academic-supervisor.js" defer></script>
   <script src="supervisor-notifications.js" defer></script>
 </head>
-<body>
+<body data-auth-required>
   <aside class="sidebar">
     <a class="brand" href="index.html">
       <span class="brand-wordmark">FYE <b>HUB</b></span>
@@ -25,12 +35,12 @@
     <p class="menu-label">SUPERVISOR MENU</p>
     <nav class="main-nav" aria-label="Supervisor navigation">
       <a class="nav-link active" href="#overview" data-view="overview"><span>⌂</span> Overview</a>
-      <a class="nav-link" href="#students" data-view="students"><span>♧</span> Students</a>
-      <a class="nav-link" href="#mentors" data-view="mentors"><span>♡</span> Mentors</a>
-      <a class="nav-link" href="#assignments" data-view="assignments"><span>▦</span> Mentor assignments</a>
+      <a class="nav-link" href="#students" data-view="students" data-count="off"><span>♧</span> Students</a>
+      <a class="nav-link" href="#mentors" data-view="mentors" data-count="off"><span>♡</span> Mentors</a>
+      <a class="nav-link" href="#assignments" data-view="assignments" data-count="off"><span>▦</span> Mentor assignments</a>
       <a class="nav-link" href="#mentor-applications" data-view="mentor-applications"><span>✓</span> Mentor applications</a>
       <a class="nav-link" href="#supervisor-notifications" data-view="supervisor-notifications"><span>♧</span> Notifications <span class="notification-count" id="supervisor-notification-count" hidden></span></a>
-      <a class="nav-link" href="#event-requests" data-view="event-requests"><span>✓</span> Event management</a>
+      <a class="nav-link" href="#event-requests" data-view="event-requests"><span aria-hidden="true">⚑</span> Event request</a>
     </nav>
 
     <div class="sidebar-bottom">
@@ -76,6 +86,12 @@
       <div class="section-heading">
         <div><p class="section-kicker">PROGRAMME AT A GLANCE</p><h2>Overview</h2></div>
       </div>
+      <nav class="footer-quick-links dashboard-quick-links" aria-label="Quick links">
+        <a href="#students" data-go="students">Find students</a>
+        <a href="#assignments" data-go="assignments">Balance assignments</a>
+        <a href="#event-requests" data-go="event-requests">Manage events</a>
+        <a href="help.html?role=supervisor">FAQs &amp; examples</a>
+      </nav>
 
       <div class="support-grid">
         <article class="mentor-card">
@@ -108,12 +124,45 @@
       </div>
       <article class="content-panel">
         <p class="summary-text">Students are listed with their faculty and programme from their profiles.</p>
+        <div class="supervisor-student-filters directory-filters">
+          <label for="student-filter-search">Name, email or student number</label>
+          <input id="student-filter-search" type="search" placeholder="Search by name, email or student number">
+          <label for="student-filter-faculty">Faculty</label>
+          <select id="student-filter-faculty"><option value="">All faculties</option></select>
+          <label for="student-filter-programme">Programme</label>
+          <select id="student-filter-programme"><option value="">All programmes</option></select>
+          <details class="directory-advanced">
+          <summary>More filters</summary>
+          <div class="directory-filters">
+          <label for="student-filter-number">Student number</label>
+          <input id="student-filter-number" type="search" inputmode="numeric" placeholder="For example, 260123456">
+          <label for="student-filter-mentor">Mentor</label>
+          <select id="student-filter-mentor"><option value="">All mentors</option></select>
+          <label for="student-filter-assignment">Mentor assignment</label>
+          <select id="student-filter-assignment"><option value="">All students</option><option value="assigned">Assigned</option><option value="unassigned">Unassigned</option></select>
+          <label for="student-filter-entry">Entry status</label>
+          <select id="student-filter-entry"><option value="">All entry statuses</option><option value="first_time">First-time entrants</option><option value="returning">Returning students</option></select>
+          <label for="student-filter-year">Year of study</label>
+          <select id="student-filter-year"><option value="">All study years</option></select>
+          </div>
+          </details>
+          <div class="directory-filter-actions">
+          <button class="form-action" id="student-filter-apply" type="button">Search</button>
+          <button class="text-button" id="student-filter-clear" type="button">Clear filters</button>
+          </div>
+        </div>
+        <div id="student-result-count" class="result-count" role="status" aria-live="polite"></div>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Student</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Mentor</th></tr></thead>
-            <tbody id="students-list"><tr><td colspan="5">Loading students…</td></tr></tbody>
+          <table class="directory-table">
+            <thead><tr><th>Student</th><th>Student number</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Mentor</th><th>Actions</th></tr></thead>
+            <tbody id="students-list"><tr><td colspan="7">Loading students…</td></tr></tbody>
           </table>
         </div>
+        <div id="student-pagination" class="pagination-controls"></div>
+        <dialog id="student-detail-dialog" class="student-detail-dialog">
+          <div id="student-detail-content"></div>
+          <button type="button" id="student-detail-close">Close</button>
+        </dialog>
       </article>
     </section>
 
@@ -122,13 +171,27 @@
         <div><p class="section-kicker">MENTOR DIRECTORY</p><h2>Mentors</h2></div>
       </div>
       <article class="content-panel">
+      <div class="mentor-filters" style="margin: 12px 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: end;">
+        <label for="mentor-filter-faculty">Faculty</label>
+        <select id="mentor-filter-faculty">
+          <option value="">All faculties</option>
+        </select>
+        <label for="mentor-filter-programme">Programme</label>
+        <select id="mentor-filter-programme">
+          <option value="">All programmes</option>
+        </select>
+        <button class="form-action" id="mentor-filter-clear" type="button">Clear filters</button>
+      </div>
+
         <p class="summary-text">Mentors are listed with their faculty, programme, and current active student count.</p>
+        <button class="form-action" id="active-mentors-report" type="button">Download active mentors report</button>
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Mentor</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Students</th><th>Capacity</th></tr></thead>
-            <tbody id="mentors-list"><tr><td colspan="6">Loading mentors…</td></tr></tbody>
+          <table class="directory-table">
+            <thead><tr><th>Mentor</th><th>Email</th><th>Faculty</th><th>Programme</th><th>Students</th><th>Capacity</th><th>Contact</th></tr></thead>
+            <tbody id="mentors-list"><tr><td colspan="7">Loading mentors…</td></tr></tbody>
           </table>
         </div>
+        <div id="mentor-pagination" class="pagination-controls"></div>
       </article>
     </section>
 
@@ -157,6 +220,9 @@
           <button class="form-action" id="start-assignment" type="button" disabled>
             Start assignment
           </button>
+          <button class="text-button" id="balance-assignments" type="button" disabled>
+            Balance all unassigned students
+          </button>
         </div>
 
         <div id="assignment-workflow" hidden>
@@ -167,7 +233,8 @@
           <p class="summary-text" id="mentor-capacity"></p>
 
           <p class="card-kicker">UNASSIGNED STUDENTS</p>
-          <p class="summary-text">Select one or more students. Use the checkboxes to select multiple students.</p>
+          <p class="summary-text">Mentors are ordered by current caseload to support equal distribution. Select one or more students or select everyone who fits the mentor’s remaining capacity.</p>
+          <button class="text-button" id="select-available-students" type="button" disabled>Select all within capacity</button>
           <div id="eligible-students" class="data-form">
             <p class="summary-text">Choose a faculty and programme first.</p>
           </div>
@@ -183,21 +250,26 @@
       <article class="content-panel">
         <p class="section-kicker">CURRENT ASSIGNMENTS</p>
         <h3>Active student and mentor matches</h3>
+        <p id="assignment-match-summary" class="summary-text">Loading match summary…</p>
+        <div id="assignment-mentor-groups" class="match-summary-grid"></div>
+        <details class="assignment-match-details">
+          <summary>View all student and mentor matches</summary>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Student</th><th>Faculty</th><th>Programme</th><th>Mentor</th><th>Assigned</th></tr></thead>
             <tbody id="assignment-list"><tr><td colspan="5">Loading assignments…</td></tr></tbody>
           </table>
         </div>
+        </details>
       </article>
     </section>
 
     <section class="page-view" data-page="event-requests" hidden>
       <div class="section-heading page-title">
-        <div><p class="section-kicker">FYE PROGRAMME OPERATIONS</p><h2>Event management</h2></div>
+        <div><p class="section-kicker">FYE PROGRAMME OPERATIONS</p><h2>Event request</h2></div>
         <button class="form-action" id="event-requests-refresh" type="button">Refresh workspace</button>
       </div>
-      <p class="summary-text">Review mentor requests, manage published events, and follow attendance through close-out.</p>
+      <p class="summary-text">Review pending event and cancellation requests. Approved events move to the event calendar, where you can manage attendance and close-out.</p>
       <section class="event-management-section">
         <div class="section-heading"><div><p class="section-kicker">SUPERVISOR REVIEW</p><h3>Mentor requests</h3></div></div>
         <p class="summary-text">Approve requests to publish them to the shared calendar, or decline them with a reason for the mentor.</p>
@@ -206,7 +278,7 @@
       <div id="event-request-list" class="event-request-list" aria-live="polite">
         <article class="content-panel"><p class="summary-text">Loading event requests…</p></article>
       </div>
-      <section class="event-management-section">
+      <section class="event-management-section" id="published-event-management">
         <div class="section-heading">
           <div><p class="section-kicker">PUBLISHED EVENTS</p><h3>Scheduled and past events</h3></div>
           <label class="event-filter-label" for="event-status-filter">Show
@@ -222,6 +294,10 @@
           <article class="content-panel"><p class="summary-text">Loading published events…</p></article>
         </div>
       </section>
+      <section class="event-management-section">
+        <h3>Event cancellation requests</h3>
+        <div id="event-cancellation-list" class="event-request-list" aria-live="polite"></div>
+      </section>
     </section>
 
     <section class="page-view" data-page="mentor-applications" hidden>
@@ -231,24 +307,49 @@
       </div>
       <article class="content-panel">
         <p class="summary-text">Review student eligibility and academic records before approving mentor access. Declined applications can be updated and resubmitted.</p>
+        <form id="application-filters" class="data-form" role="search" aria-label="Filter mentor applications">
+          <label for="application-search">Search applicants</label>
+          <input id="application-search" type="search" placeholder="Name, email or student number">
+          <label for="application-status">Status</label>
+          <select id="application-status"><option value="">All statuses</option><option value="pending">Pending</option><option value="shortlisted">Shortlisted</option><option value="declined">Declined</option><option value="closed">Closed</option><option value="approved">Approved — replacement review</option></select>
+          <label for="application-school">School</label><select id="application-school"><option value="">All schools</option></select>
+          <label for="application-programme">Programme</label><select id="application-programme"><option value="">All programmes</option></select>
+          <label for="application-study-year">Current year of study</label><select id="application-study-year"><option value="">All study years</option></select>
+          <label for="application-target-year">Target academic year</label><select id="application-target-year"><option value="">All target years</option></select>
+          <button class="form-action" type="reset">Clear filters</button>
+        </form>
+        <p id="application-filter-summary" class="summary-text" role="status" aria-live="polite"></p>
         <p class="form-feedback" id="approval-feedback" role="status" aria-live="polite"></p>
-        <div class="table-wrap">
+        <button type="button" class="collection-toggle" data-disclosure="mentor-applications-content" aria-controls="mentor-applications-content" aria-expanded="false" data-show-label="Show mentor applications" data-hide-label="Hide mentor applications"><span class="disclosure-label">Show mentor applications</span> <span id="applications-count" class="collection-count">0</span></button>
+        <div id="mentor-applications-content" hidden><p class="summary-text">Scroll the table sideways to view all application details.</p><div class="table-wrap">
           <table>
             <thead>
-              <tr><th>Applicant</th><th>Student number</th><th>Programme</th><th>Current year</th><th>Previous year</th><th>Status</th><th>Academic record</th><th>Review</th></tr>
+              <tr><th>Applicant</th><th>Student number</th><th>School</th><th>Programme</th><th>Current year</th><th>Previous year</th><th>Status</th><th>Academic record</th><th>Review</th></tr>
             </thead>
             <tbody id="mentor-approval-list">
-              <tr><td colspan="8">Loading mentor applications…</td></tr>
+              <tr><td colspan="9">Loading mentor applications…</td></tr>
             </tbody>
           </table>
-        </div>
+        </div></div>
+      </article>
+      <article class="content-panel">
+        <p class="section-kicker">FINAL REVIEW</p><h3>Shortlisted candidates <span id="shortlisted-count">0</span></h3>
+        <p class="summary-text">Candidates currently shortlisted for mentor approval.</p>
+        <button type="button" class="collection-toggle" data-disclosure="mentor-shortlisted-content" aria-controls="mentor-shortlisted-content" aria-expanded="false" data-show-label="Show shortlisted candidates" data-hide-label="Hide shortlisted candidates"><span class="disclosure-label">Show shortlisted candidates</span></button>
+        <div id="mentor-shortlisted-content" hidden><p class="summary-text">Scroll the table sideways to view all candidate details.</p><div class="table-wrap"><table>
+          <thead><tr><th>Applicant</th><th>Student number</th><th>School</th><th>Programme</th><th>Current year</th><th>Previous year</th><th>Status</th><th>Academic record</th><th>Review</th></tr></thead>
+          <tbody id="mentor-shortlisted-list"><tr><td colspan="9">Loading shortlisted candidates…</td></tr></tbody>
+        </table></div></div>
       </article>
     </section>
 
     <section class="page-view" data-page="supervisor-notifications" hidden>
       <div class="section-heading page-title">
         <div><p class="section-kicker">SUPERVISOR INBOX</p><h2>Notifications</h2></div>
-        <button class="form-action" id="supervisor-notifications-refresh" type="button">Refresh</button>
+        <div class="notification-toolbar">
+          <button class="form-action" id="supervisor-notifications-read-all" type="button" disabled>Mark all as read</button>
+          <button class="form-action" id="supervisor-notifications-refresh" type="button">Refresh</button>
+        </div>
       </div>
       <p class="form-feedback" id="supervisor-notifications-feedback" role="status" aria-live="polite"></p>
       <div id="supervisor-notification-list" class="event-request-list" aria-live="polite">
@@ -258,6 +359,12 @@
 
     <footer class="dashboard-footer">
       <span>Growing together, one first year at a time.</span>
+      <nav class="footer-quick-links" aria-label="Quick links">
+        <a href="#students" data-go="students">Students</a>
+        <a href="#assignments" data-go="assignments">Assignments</a>
+        <a href="#event-requests" data-go="event-requests">Events</a>
+        <a href="help.html">FAQs &amp; examples</a>
+      </nav>
       <span>FYE Hub · University of Mpumalanga</span>
     </footer>
   </main>

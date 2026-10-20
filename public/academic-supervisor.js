@@ -1,0 +1,23 @@
+(async () => {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
+ const db=window.fyeSupabase,host=document.querySelector('[data-page="mentor-applications"]');if(!db||!host)return;
+ const panel=document.createElement('article');panel.className='content-panel';
+ panel.innerHTML='<h3>Academic verification and mentor appointments</h3><label>Find an account<input type="search" placeholder="Name, email or student number"></label><select aria-label="Choose account"></select><div class="academic-account-summary"></div><details><summary>Account actions</summary><div class="academic-controls"></div></details><p role="status"></p><details><summary>Assignments needing review</summary><div class="academic-legacy"></div></details>';
+ host.append(panel);const search=panel.querySelector('input'),select=panel.querySelector('select'),summary=panel.querySelector('.academic-account-summary'),controls=panel.querySelector('.academic-controls'),feedback=panel.querySelector('[role="status"]'),legacy=panel.querySelector('.academic-legacy');let data;
+ function action(label,fn){const b=document.createElement('button');b.type='button';b.className='text-button';b.textContent=label;b.onclick=async()=>{b.disabled=true;try{await fn();window.dispatchEvent(new CustomEvent('fye:supervisor-data-refresh'));feedback.textContent='Saved.';}catch(e){feedback.textContent=e.message;}finally{b.disabled=false;}};return b;}
+ async function rpc(name,args){const result=await db.rpc(name,args);if(result.error)throw result.error;return result.data;}
+ function render(){if(!data)return;const previous=select.value,term=search.value.toLowerCase();select.replaceChildren(new Option('Choose an account',''));
+ for(const p of data.profiles.filter(p=>`${p.full_name} ${p.email} ${p.student_number}`.toLowerCase().includes(term)).slice(0,100))select.add(new Option(`${p.full_name||p.email} · ${p.student_number||''}`,p.id));select.value=previous;details();
+ legacy.replaceChildren();for(const a of data.assignments.filter(a=>!a.ended_at&&(!a.academic_year||a.needs_reassignment))){const row=document.createElement('p');const p=data.profiles.find(p=>p.id===a.student_id);row.textContent=`${p?.full_name||a.student_id}: ${a.academic_year?'reassignment flagged':'academic year unverified'} `;
+ if(!a.academic_year)row.append(action('Verify legacy academic year',async()=>{const year=Number(prompt('Confirmed assignment academic year:'));if(!Number.isInteger(year)||year<2000)throw Error('Enter the confirmed year.');await rpc('review_legacy_assignment_year',{p_assignment_id:a.id,p_year:year});}));
+ else row.append(action('End match for reassignment',async()=>{const reason=prompt('Reason for ending this match:');if(!reason?.trim())return;await rpc('end_mentee_assignment',{p_assignment_id:a.id,p_reason:reason});}));legacy.append(row);}
+ }
+ function details(){summary.replaceChildren();controls.replaceChildren();const p=data?.profiles.find(p=>p.id===select.value);if(!p)return;
+ const q=data.programmes.find(q=>String(q.id)===String(p.programme_id)),a=data.appointments.find(a=>a.mentor_id===p.id&&!a.ended_at);
+ summary.textContent=`${p.full_name} · ${q?.name||'No programme'} · ${q?.qualification_level||'Unclassified qualification'} · Year ${p.study_year||'?'} · Entry ${p.first_entry_year||'?'} · ${p.entry_status||'Status undeclared'} · ${p.academic_verified_at?'Verified':'Awaiting verification'}${a?' · Appointment '+(a.paused?'paused':Date.parse(a.starts_at)>Date.now()?'scheduled':'active'):''}`;
+ controls.append(action('Verify declared academic details',()=>rpc('verify_academic_details',{p_profile_id:p.id})));
+ if(a){for(const [label,kind]of [['Pause new assignments','pause'],['Resume new assignments','resume'],['End mentor appointment','end']])controls.append(action(label,()=>{const reason=prompt('Record the reason:');if(!reason?.trim())return;return rpc('manage_mentor_appointment',{p_mentor_id:p.id,p_action:kind,p_reason:reason});}));
+ if(q?.qualification_level&&q.qualification_level!=='undergraduate'){const programmes=document.createElement('select');for(const target of data.programmes.filter(t=>String(t.faculty_id)===String(p.faculty_id)&&t.qualification_level==='undergraduate'))programmes.add(new Option(target.name,String(target.id)));controls.append(programmes,action('Approve programme mapping',()=>rpc('map_postgraduate_mentor',{p_mentor_id:p.id,p_programme_id:Number(programmes.value),p_remove:false})),action('Remove programme mapping',()=>rpc('map_postgraduate_mentor',{p_mentor_id:p.id,p_programme_id:Number(programmes.value),p_remove:true})));}}
+ }
+ search.oninput=render;select.onchange=details;document.addEventListener('fye:supervisor-academic-data',event=>{data=event.detail;render();});
+})();

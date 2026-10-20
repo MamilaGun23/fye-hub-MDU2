@@ -17,7 +17,11 @@
     const { data: authData, error: authError } = await db.auth.getUser();
     if (authError || !authData.user) {
       title.textContent = 'Sign in required';
-      feedback.textContent = 'Sign in to FYE Hub with your student account, then scan this event QR code again.';
+      feedback.textContent = 'Sign in to continue to this event and record your attendance.';
+      const signIn = document.createElement('a'); signIn.className = 'form-action';
+      signIn.textContent = 'Sign in';
+      signIn.href = window.fyeAuth.signInUrl(`event-attendance.html?${new URLSearchParams({token})}`);
+      feedback.after(signIn);
       return;
     }
 
@@ -42,7 +46,7 @@
     if (profileError || !['student', 'mentor'].includes(profile?.role) || profile.is_active === false) {
       title.textContent = event.title;
       details.textContent = `${event.event_date} · ${String(event.event_time).slice(0, 5)} · ${event.venue}`;
-      feedback.textContent = 'Only signed-in student accounts can record event attendance.';
+      feedback.textContent = 'Only active student and mentor accounts can record event attendance.';
       return;
     }
 

@@ -6,16 +6,24 @@
   <meta name="theme-color" content="#f2f6fc">
   <title>Admin Dashboard | FYE Hub</title>
   <link rel="stylesheet" href="student.css">
+  <link rel="stylesheet" href="ui-theme.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js" defer></script>
+  <script src="academic.js" defer></script>
+  <script src="auth.js" defer></script>
+  <script src="directory.js" defer></script>
+  <script src="dashboard-counts.js" defer></script>
+  <script src="dashboard-ui.js" defer></script>
   <script src="calendar.js" defer></script>
   <script src="notices.js" defer></script>
+  <script src="admin-details.js" defer></script>
   <script src="admin.js" defer></script>
   <script src="admin-notices.js" defer></script>
   <script src="admin-academic.js" defer></script>
+  <script src="programme-qualification.js" defer></script>
 </head>
-<body>
+<body data-auth-required>
   <aside class="sidebar">
     <a class="brand" href="index.html">
       <span class="brand-wordmark">FYE <b>HUB</b></span>
@@ -30,14 +38,14 @@
       <a class="nav-link" href="#analytics" data-view="analytics">
         <span>▥</span> Analytics
       </a>
-      <a class="nav-link" href="#users" data-view="users">
+      <a class="nav-link" href="#users" data-view="users" data-count="off">
         <span>♙</span> User accounts
       </a>
-      <a class="nav-link" href="#setup" data-view="setup">
+      <a class="nav-link" href="#setup" data-view="setup" data-count="off">
         <span>⚙</span> Faculty &amp; programmes
       </a>
       <a class="nav-link" href="#notices" data-view="notices">
-        <span>!</span> System notices
+        <span>!</span> Updates
       </a>
     </nav>
 
@@ -45,7 +53,7 @@
       <div class="support-note">
         <span class="support-icon">✦</span>
         <strong>Keeping things running.</strong>
-        <p>Manage platform access, notices, and academic information.</p>
+        <p>Manage platform access, updates, and academic information.</p>
       </div>
 
       <a class="signout" id="admin-signout" href="index.html">
@@ -155,17 +163,17 @@
         <article class="admin-metric">
           <p class="card-kicker">STUDENTS ON PLATFORM</p>
           <strong id="analytics-students">—</strong>
-          <span>Active student and mentor accounts</span>
+          <span>Active Student-role accounts</span>
         </article>
         <article class="admin-metric">
           <p class="card-kicker">ACTIVE MENTORS</p>
           <strong id="analytics-mentors">—</strong>
-          <span>Mentor profiles currently enabled</span>
+          <span>Effective mentor appointments accepting assignments</span>
         </article>
         <article class="admin-metric">
           <p class="card-kicker">EVENTS IN PERIOD</p>
           <strong id="analytics-events">—</strong>
-          <span>Events on the shared calendar</span>
+          <span>Events and recorded student attendance</span>
         </article>
         <article class="admin-metric">
           <p class="card-kicker">UPCOMING EVENTS</p>
@@ -183,10 +191,13 @@
           <span>Student or mentor accounts disabled</span>
         </article>
         <article class="admin-metric">
-          <p class="card-kicker">ACTIVE NOTICES</p>
+          <p class="card-kicker">ACTIVE UPDATES</p>
           <strong id="analytics-notices">—</strong>
-          <span>Notices currently published or scheduled</span>
+          <span>Updates currently published or scheduled</span>
         </article>
+        <article class="admin-metric"><p class="card-kicker">ELIGIBLE MENTEES</p><strong id="analytics-eligible">—</strong><span>Verified first-time undergraduates</span></article>
+        <article class="admin-metric"><p class="card-kicker">UNASSIGNED ELIGIBLE MENTEES</p><strong id="analytics-unassigned">—</strong><span>Eligible students awaiting a match</span></article>
+        <article class="admin-metric"><p class="card-kicker">APPLICATIONS AWAITING RESULTS</p><strong id="analytics-awaiting">—</strong><span>Missing verification or supplementary results</span></article>
       </div>
 
       <article class="content-panel admin-analytics-panel">
@@ -198,6 +209,18 @@
           <p class="summary-text" id="analytics-event-total">Loading event activity…</p>
         </div>
         <div id="analytics-event-chart" class="admin-event-chart" role="img" aria-label="Events by month"></div>
+      </article>
+
+      <article class="content-panel admin-analytics-panel">
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker">REPORT BY FACULTY</p>
+            <h3>Faculty &amp; programme breakdown</h3>
+          </div>
+        </div>
+        <p class="summary-text">Current account totals by faculty and programme. Students and mentors count active accounts; these totals are independent of the event period above.</p>
+        <div id="analytics-faculty-tabs" class="analytics-faculty-tabs" role="tablist" aria-label="Faculty breakdown"></div>
+        <div id="analytics-faculty-detail" class="analytics-faculty-detail" role="tabpanel" tabindex="0"></div>
       </article>
     </section>
 
@@ -214,16 +237,15 @@
 
       <article class="content-panel">
         <p class="summary-text">
-          Search and filter profiles saved in Supabase. This page is for
-          reviewing records; account access is managed separately.
+          Search and filter profiles saved in Supabase. Mentor accounts can be edited or permanently deleted here; disabling an account preserves its records while blocking sign-in.
         </p>
 
-        <div class="admin-filter-grid">
-          <label for="user-search">Search name or email</label>
+        <div class="admin-filter-grid directory-filters">
+          <label for="user-search">Name, email or student number</label>
           <input
             id="user-search"
             type="search"
-            placeholder="Type a name or email"
+            placeholder="Search by name, email or student number"
           >
 
           <label for="user-role-filter">Role</label>
@@ -244,6 +266,13 @@
           <select id="user-programme-filter" disabled>
             <option value="">Choose a faculty first</option>
           </select>
+          <label for="user-status-filter">Account status</label>
+          <select id="user-status-filter">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="disabled">Disabled</option>
+          </select>
+          <div class="directory-filter-actions"><button class="text-button" id="users-clear-filters" type="button">Clear filters</button></div>
         </div>
 
         <p
@@ -255,13 +284,14 @@
       </article>
 
       <article class="content-panel">
-        <p class="section-kicker" id="user-results-count">SUPABASE PROFILES</p>
+        <p class="section-kicker" id="user-results-count" role="status" aria-live="polite">SUPABASE PROFILES</p>
 
         <div class="table-wrap">
-          <table>
+          <table class="directory-table account-directory-table">
             <thead>
               <tr>
                 <th>Full name</th>
+                <th>Student number</th>
                 <th>Email</th>
                 <th>Role</th>
                 <th>Faculty</th>
@@ -272,11 +302,12 @@
             </thead>
             <tbody id="user-list">
               <tr>
-                <td colspan="7">Loading profiles…</td>
+                <td colspan="8">Loading profiles…</td>
               </tr>
             </tbody>
           </table>
         </div>
+        <div id="user-pagination" class="pagination-controls" aria-label="User account pages"></div>
       </article>
     </section>
 
@@ -332,10 +363,12 @@
             ></p>
           </form>
 
-          <h3>Existing faculties</h3>
+          <details class="academic-collection">
+          <summary>Browse existing faculties</summary>
           <ul id="faculty-manage-list" class="academic-manage-list">
             <li>Loading faculties…</li>
           </ul>
+          </details>
         </article>
 
         <article class="content-panel">
@@ -366,10 +399,14 @@
             ></p>
           </form>
 
-          <h3>Existing programmes</h3>
+          <details class="academic-collection">
+          <summary>Browse existing programmes</summary>
+          <label for="programme-manage-search">Find a programme</label>
+          <input id="programme-manage-search" type="search" placeholder="Search programme or faculty">
           <ul id="programme-manage-list" class="academic-manage-list">
             <li>Loading programmes…</li>
           </ul>
+          </details>
         </article>
       </div>
     </section>
@@ -378,42 +415,42 @@
       <div class="section-heading page-title">
         <div>
           <p class="section-kicker">SHARE IMPORTANT SYSTEM INFORMATION</p>
-          <h2>System notices</h2>
+          <h2>Updates</h2>
         </div>
       </div>
 
       <article class="content-panel">
         <p class="summary-text">
-          Publish notices for students and mentors. They appear on those dashboards
+          Publish updates for students and mentors. They appear on those dashboards
           and in their notifications during the selected time period.
         </p>
 
         <form id="notice-form" class="data-form">
-          <label for="notice-title">Notice title</label>
-          <input
-            id="notice-title"
-            type="text"
-            maxlength="120"
-            placeholder="Scheduled system maintenance"
-            required
-          >
+          <label for="notice-title">Update title</label>
+          <select id="notice-title" required>
+            <option value="">Choose an update title</option>
+            <option value="University update">University update</option>
+            <option value="Application updates">Application updates</option>
+          </select>
 
           <label for="notice-message">Message</label>
           <textarea
             id="notice-message"
             rows="4"
             maxlength="1000"
-            placeholder="Explain what users need to know"
+            placeholder="For example: The orientation session has moved to the Student Centre."
             required
           ></textarea>
 
-          <label for="notice-starts-at">Show notice from</label>
+          <label for="notice-starts-at">Show update from</label>
           <input id="notice-starts-at" type="datetime-local" required>
 
           <label for="notice-ends-at">Stop showing after (optional)</label>
           <input id="notice-ends-at" type="datetime-local">
+          <label for="notice-duration-days">Or keep active for this many days</label>
+          <input id="notice-duration-days" type="number" min="1" max="365" step="1" placeholder="For example, 7">
 
-          <button class="form-action" type="submit">Publish notice</button>
+          <button class="form-action" type="submit">Publish update</button>
           <p
             class="form-feedback"
             id="notice-feedback"
@@ -426,8 +463,8 @@
       <article class="content-panel">
         <div class="section-heading">
           <div>
-            <p class="section-kicker">NOTICE HISTORY</p>
-            <h3>Published notices</h3>
+            <p class="section-kicker">UPDATE HISTORY</p>
+            <h3>Published updates</h3>
           </div>
           <button class="form-action" id="notices-refresh" type="button">
             Refresh
@@ -446,7 +483,7 @@
             </thead>
             <tbody id="notice-list">
               <tr>
-                <td colspan="4">Loading notices…</td>
+                <td colspan="4">Loading updates…</td>
               </tr>
             </tbody>
           </table>
@@ -454,8 +491,42 @@
       </article>
     </section>
 
+    <dialog id="mentor-edit-dialog" class="mentor-edit-dialog">
+      <form id="mentor-edit-form" class="data-form">
+        <h2>Edit mentor account</h2>
+        <label for="edit-mentor-first-name">First name</label>
+        <input id="edit-mentor-first-name" maxlength="100" required>
+        <label for="edit-mentor-last-name">Surname</label>
+        <input id="edit-mentor-last-name" maxlength="100" required>
+        <label for="edit-mentor-school">School</label>
+        <input id="edit-mentor-school" maxlength="160" required>
+        <label for="edit-mentor-faculty">Faculty</label>
+        <select id="edit-mentor-faculty" required></select>
+        <label for="edit-mentor-programme">Programme</label>
+        <select id="edit-mentor-programme" required></select>
+        <label for="edit-mentor-bio">Bio</label>
+        <textarea id="edit-mentor-bio" rows="3" maxlength="1000"></textarea>
+        <p id="mentor-edit-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+        <div class="mentor-edit-actions">
+          <button class="form-action" type="submit">Save mentor account</button>
+          <button class="text-button" id="mentor-edit-cancel" type="button">Cancel</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="admin-detail-dialog" class="dashboard-detail-dialog" aria-labelledby="admin-detail-title">
+      <div class="section-heading"><h2 id="admin-detail-title">Details</h2><button id="admin-detail-close" class="text-button" type="button">Close</button></div>
+      <p id="admin-detail-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+      <div id="admin-detail-content"></div>
+    </dialog>
     <footer class="dashboard-footer">
       <span>Growing together, one first year at a time.</span>
+      <nav class="footer-quick-links" aria-label="Quick links">
+        <a href="#overview" data-go="overview">Overview</a>
+        <a href="#users" data-go="users">User accounts</a>
+        <a href="#notices" data-go="notices">Updates</a>
+        <a href="help.html">FAQs &amp; examples</a>
+      </nav>
       <span>FYE Hub · University of Mpumalanga</span>
     </footer>
   </main>

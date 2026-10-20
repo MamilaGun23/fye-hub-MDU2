@@ -4,9 +4,23 @@
   "description": "First Year Experience Hub",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test",
+    "demo:audit": "node scripts/demo/cli.cjs audit",
+    "demo:preview": "node scripts/demo/cli.cjs preview",
+    "demo:check": "node scripts/demo/cli.cjs check",
+    "demo:seed": "node scripts/demo/cli.cjs seed",
+    "demo:trial": "node scripts/demo/cli.cjs trial",
+    "demo:verify": "node scripts/demo/cli.cjs verify",
+    "demo:access": "node scripts/demo/cli.cjs access",
+    "demo:cleanup": "node scripts/demo/cli.cjs cleanup",
+    "accounts:refresh": "node scripts/demo/refresh-appearance.cjs"
   },
   "dependencies": {
     "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
+    "jsdom": "^30.1.3"
   }
 }

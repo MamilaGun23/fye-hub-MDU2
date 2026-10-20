@@ -5,18 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mentor Dashboard | FYE Hub</title>
   <link rel="stylesheet" href="student.css">
+  <link rel="stylesheet" href="ui-theme.css">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js" defer></script>
+  <script src="academic.js" defer></script>
+  <script src="auth.js" defer></script>
+  <script src="dashboard-counts.js" defer></script>
+  <script src="dashboard-ui.js" defer></script>
   <script src="calendar.js" defer></script>
   <script src="event-workflow.js" defer></script>
   <script src="notices.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
   <script src="notifications.js" defer></script>
+  <script src="messages.js" defer></script>
   <script src="mentor-approval.js" defer></script>
   <script src="mentor.js" defer></script>
+  <script src="academic-details.js" defer></script>
 </head>
-<body>
+<body data-auth-required>
   <aside class="sidebar">
     <a class="brand" href="index.html">
       <span class="brand-wordmark">FYE <b>HUB</b></span>
@@ -30,6 +37,9 @@
       </a>
       <a class="nav-link" href="#students" data-view="students">
         <span>♧</span> My students
+      </a>
+      <a class="nav-link" href="#messages" data-view="messages">
+        <span>✉</span> Messages
       </a>
       <a class="nav-link" href="#calendar" data-view="calendar">
         <span>▦</span> Calendar
@@ -61,8 +71,8 @@
       </div>
 
       <div class="profile-chip">
-        <span class="avatar small-avatar">LM</span>
-        <span class="profile-name">Lerato Mokoena</span>
+        <span class="avatar small-avatar" id="mentor-header-avatar">M</span>
+        <span class="profile-name" id="mentor-header-name">Mentor</span>
       </div>
     </header>
 
@@ -100,7 +110,7 @@
           <p class="section-kicker">YOUR MENTOR GROUP</p>
           <h2>A quick overview</h2>
         </div>
-        <span class="term-pill"><span></span> First year</span>
+        <span class="term-pill"><span></span> Peer mentor</span>
       </div>
 
       <div class="support-grid">
@@ -116,11 +126,9 @@
         </article>
 
         <article class="next-card">
-          <p class="card-kicker">NEXT IMPORTANT DATE</p>
-          <h3>First-year meet and greet</h3>
-          <p class="summary-text">
-            FYE event · 12 October · 14:00 · Student Centre
-          </p>
+            <p class="card-kicker">NEXT IMPORTANT DATE</p>
+            <h3 id="mentor-next-event-title">Checking the calendar…</h3>
+            <p class="summary-text" id="mentor-next-event-details">Upcoming events will appear here.</p>
           <button class="text-button" type="button" data-go="calendar">
             Open calendar <span class="button-arrow" aria-hidden="true">→</span>
           </button>
@@ -147,6 +155,24 @@
       </article>
     </section>
 
+    <section class="page-view" data-page="messages" hidden>
+      <div class="section-heading page-title">
+        <div><p class="section-kicker">YOUR MENTOR GROUP</p><h2>Messages</h2></div>
+      </div>
+      <article class="content-panel">
+        <p class="summary-text">Talk privately with students currently assigned to you. Keep messages supportive and related to FYE.</p>
+        <label for="mentor-message-student">Student</label>
+        <select id="mentor-message-student"><option value="">Loading your assigned students…</option></select>
+        <div id="mentor-message-thread" class="message-thread" aria-live="polite"></div>
+        <form id="mentor-message-form" class="data-form">
+          <label for="mentor-message-body">Message</label>
+          <textarea id="mentor-message-body" rows="3" maxlength="2000" placeholder="For example: Hi! How are your first lectures going?" required></textarea>
+          <button class="form-action" type="submit">Send message</button>
+          <p id="mentor-message-feedback" class="form-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </article>
+    </section>
+
     <section class="page-view" data-page="calendar" hidden>
       <div class="section-heading page-title">
         <div>
@@ -156,31 +182,7 @@
       </div>
 
       <article class="content-panel">
-        <p class="summary-text">Upcoming dates for your mentor group.</p>
-
-        <div class="upcoming-event">
-          <div class="event-date">
-            <span>OCT</span>
-            <strong>08</strong>
-          </div>
-          <div class="event-info">
-            <span class="event-type test">TEST</span>
-            <h4>Introduction to Biology</h4>
-            <p>09:00 · Main Campus</p>
-          </div>
-        </div>
-
-        <div class="upcoming-event">
-          <div class="event-date">
-            <span>OCT</span>
-            <strong>12</strong>
-          </div>
-          <div class="event-info">
-            <span class="event-type event">FYE EVENT</span>
-            <h4>First-year meet and greet</h4>
-            <p>14:00 · Student Centre</p>
-          </div>
-        </div>
+        <p class="summary-text">Loading calendar events…</p>
       </article>
       <article class="content-panel">
         <p class="section-kicker">SUPERVISOR REVIEW</p>
@@ -201,9 +203,10 @@
 
       <article class="content-panel">
         <div class="notification-toolbar">
-          <p class="summary-text">Event decisions, reminders, and approved-event QR codes appear here.</p>
+          <p class="summary-text">Updates, event decisions, reminders, and approved-event QR codes appear here.</p>
           <button class="text-button" id="notifications-refresh" type="button">Refresh</button>
         </div>
+        <p id="notification-feedback" class="form-feedback" role="status" aria-live="polite"></p>
         <div id="notification-list" aria-live="polite">
           <p class="summary-text">Loading notifications…</p>
         </div>
@@ -222,7 +225,7 @@
         <header class="mentor-profile-header">
           <div class="mentor-profile-portrait">
             <img id="mentor-profile-header-photo" alt="Mentor profile picture" hidden>
-            <span id="mentor-profile-header-initials" class="avatar">LM</span>
+            <span id="mentor-profile-header-initials" class="avatar">M</span>
           </div>
           <div class="mentor-profile-identity">
             <p class="card-kicker">PEER MENTOR</p>
@@ -237,13 +240,11 @@
         <details id="mentor-profile-editor" class="mentor-profile-editor">
           <summary>Edit profile</summary>
           <form id="mentor-profile-form" class="data-form">
-          <label for="profile-name">Name</label>
-          <input
-            id="profile-name"
-            type="text"
-            value="Lerato Mokoena"
-            required
-          >
+          <label for="profile-first-name">First name</label>
+          <input id="profile-first-name" type="text" autocomplete="given-name" required>
+
+          <label for="profile-last-name">Surname</label>
+          <input id="profile-last-name" type="text" autocomplete="family-name" required>
 
           <label for="profile-faculty">Faculty</label>
           <select id="profile-faculty" required>
@@ -254,6 +255,9 @@
           <select id="profile-programme" required disabled>
             <option value="">Choose a faculty first</option>
           </select>
+
+          <label for="profile-school">School</label>
+          <input id="profile-school" type="text" maxlength="160" placeholder="For example, School of Agriculture" required>
 
           <label for="profile-intro">Short introduction</label>
           <input
@@ -276,7 +280,7 @@
               alt="Profile picture preview"
               hidden
             >
-            <span id="profile-initials" class="avatar large-avatar">LM</span>
+            <span id="profile-initials" class="avatar large-avatar">M</span>
           </div>
 
           <label for="whatsapp-link">WhatsApp group invite link</label>
@@ -295,6 +299,12 @@
 
     <footer class="dashboard-footer">
       <span>Growing together, one first year at a time.</span>
+      <nav class="footer-quick-links" aria-label="Quick links">
+        <a href="#overview" data-go="overview">Overview</a>
+        <a href="#students" data-go="students">My students</a>
+        <a href="#calendar" data-go="calendar">Calendar</a>
+        <a href="help.html">FAQs &amp; examples</a>
+      </nav>
       <span>FYE Hub · University of Mpumalanga</span>
     </footer>
   </main>

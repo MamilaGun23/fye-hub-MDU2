@@ -10,6 +10,9 @@ const profileHeaderInitials = document.querySelector('#mentor-profile-header-ini
 const profileHeaderName = document.querySelector('#mentor-profile-header-name');
 const profileHeaderDetails = document.querySelector('#mentor-profile-header-details');
 const feedback = document.querySelector('#profile-feedback');
+const firstNameInput = document.querySelector('#profile-first-name');
+const lastNameInput = document.querySelector('#profile-last-name');
+const schoolInput = document.querySelector('#profile-school');
 const facultySelect = document.querySelector('#profile-faculty');
 const programmeSelect = document.querySelector('#profile-programme');
 const studentList = document.querySelector('#mentor-student-list');
@@ -60,7 +63,10 @@ navLinks.forEach((link) => {
 });
 
 document.querySelectorAll('[data-go]').forEach((button) => {
-  button.addEventListener('click', () => showPage(button.dataset.go));
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    showPage(button.dataset.go);
+  });
 });
 
 function showPhoto(url) {
@@ -82,7 +88,7 @@ function showPhoto(url) {
 }
 
 function getInitials(name) {
-  return (name || 'Student')
+  return (name || 'Mentor')
     .trim()
     .split(/\s+/)
     .slice(0, 2)
@@ -125,12 +131,14 @@ function updateMentorProfileDetails() {
   if (!profileHeaderDetails) return;
   const faculty = facultySelect.selectedOptions[0]?.textContent;
   const programme = programmeSelect.selectedOptions[0]?.textContent;
-  profileHeaderDetails.textContent = [programme, faculty]
-    .filter((value) => value && !value.startsWith('Choose'))
-    .join(' · ') || 'Peer mentor';
+  profileHeaderDetails.textContent = [
+    programme,
+    schoolInput.value.trim(),
+    faculty
+  ].filter((value) => value && !value.startsWith('Choose')).join(' · ') || 'Peer mentor';
 }
 
-function renderAssignedStudents(students, faculties, programmes) {
+function renderAssignedStudents(students, faculties, programmes, contacts) {
   studentList.replaceChildren();
 
   const count = students.length;
@@ -161,7 +169,7 @@ function renderAssignedStudents(students, faculties, programmes) {
     const academicDetails = document.createElement('p');
     const facultyName = faculties.get(String(student.faculty_id));
     const programmeName = programmes.get(String(student.programme_id));
-    academicDetails.textContent = [facultyName, programmeName]
+    academicDetails.textContent = [facultyName, student.school, programmeName]
       .filter(Boolean)
       .join(' · ') || 'Faculty and programme not provided';
 
@@ -175,11 +183,29 @@ function renderAssignedStudents(students, faculties, programmes) {
       row.appendChild(emailLink);
     }
 
+    const lastContact = contacts.get(student.id);
+    const contactButton = document.createElement('button');
+    contactButton.type = 'button';
+    contactButton.className = 'mentor-contact-log-button';
+    contactButton.textContent = lastContact
+      ? 'Message student'
+      : 'Log first contact';
+    contactButton.title = lastContact ? `Last contact: ${new Date(lastContact).toLocaleDateString('en-ZA')}` : 'Open an introduction in Messages; contact is logged after sending.';
+    contactButton.addEventListener('click', () => {
+      showPage('messages');
+      window.dispatchEvent(new CustomEvent('fye:message-compose', { detail: {
+        studentId: student.id,
+        introduction: lastContact ? '' : `Hi ${(student.full_name || 'there').split(' ')[0]}, I'm ${currentProfile?.full_name || 'your mentor'}, your FYE mentor. Welcome to FYE Hub! I'm here to help you settle into university, plan your studies and find support. How are you settling in, and is there anything you would like help with?`
+      } }));
+    });
+    row.appendChild(contactButton);
+
     studentList.appendChild(row);
   }
 }
 
 async function loadAssignedStudents() {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
   studentCount.textContent = 'Loading…';
   studentList.replaceChildren();
 
@@ -189,7 +215,7 @@ async function loadAssignedStudents() {
   studentList.appendChild(loadingMessage);
 
   const { data: assignments, error: assignmentsError } = await fyeClient
-    .from('mentor_assignments')
+    .from('active_mentor_assignments')
     .select('student_id')
     .eq('mentor_id', currentUser.id)
     .is('ended_at', null);
@@ -212,13 +238,13 @@ async function loadAssignedStudents() {
   ];
 
   if (studentIds.length === 0) {
-    renderAssignedStudents([], new Map(), new Map());
+    renderAssignedStudents([], new Map(), new Map(), new Map());
     return;
   }
 
   const { data: students, error: studentsError } = await fyeClient
     .from('profiles')
-    .select('id, full_name, email, faculty_id, programme_id')
+    .select('id, full_name, email, faculty_id, programme_id, school')
     .in('id', studentIds)
     .in('role', ['student', 'mentor'])
     .order('full_name');
@@ -274,8 +300,64 @@ async function loadAssignedStudents() {
     ])
   );
 
-  renderAssignedStudents(students || [], faculties, programmes);
+  const { data: contactRows, error: contactError } = await fyeClient
+    .from('mentor_contact_status')
+    .select('student_id, last_contact_at')
+    .eq('mentor_id', currentUser.id)
+    .in('student_id', studentIds);
+  if (contactError) {
+    console.error('Could not load mentor contact records:', contactError);
+  }
+  const contacts = new Map((contactRows || []).map((row) => [row.student_id, row.last_contact_at]));
+  renderAssignedStudents(students || [], faculties, programmes, contacts);
 }
+
+const mentorNextEventTitle = document.querySelector('#mentor-next-event-title');
+const mentorNextEventDetails = document.querySelector('#mentor-next-event-details');
+
+async function loadNextCalendarEvent() {
+  if (window.fyeAuth && !(await window.fyeAuth.ready)) return;
+  if (!mentorNextEventTitle || !fyeClient) return;
+
+  const { data: events, error } = await fyeClient
+    .from('calendar_events')
+    .select('id, title, event_type, starts_at, location, event_status')
+    .in('event_status', ['scheduled', 'completed'])
+    .gte('starts_at', new Date().toISOString())
+    .order('starts_at', { ascending: true })
+    .limit(1);
+
+  if (error) {
+    console.error('Could not load next calendar event for mentor:', error);
+    mentorNextEventTitle.textContent = 'Event unavailable';
+    mentorNextEventDetails.textContent = 'Could not load upcoming events.';
+    return;
+  }
+
+  const nextEvent = events?.[0] || null;
+  if (!nextEvent) {
+    mentorNextEventTitle.textContent = 'No upcoming events';
+    mentorNextEventDetails.textContent = 'New scheduled events will appear here.';
+    return;
+  }
+
+  const startsAt = new Date(nextEvent.starts_at);
+  const eventDate = new Intl.DateTimeFormat('en-ZA', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  }).format(startsAt);
+  const eventType = nextEvent.event_type
+    .replaceAll('_', ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+  mentorNextEventTitle.textContent = nextEvent.title;
+  mentorNextEventDetails.textContent = [eventType, eventDate, nextEvent.location]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+window.addEventListener('fye:calendar-refresh', loadNextCalendarEvent);
+window.addEventListener('fye:mentor-contact-recorded', loadAssignedStudents);
 
 async function loadFaculties(selectedFacultyId = '') {
   facultySelect.innerHTML = '<option value="">Loading faculties…</option>';
@@ -369,6 +451,8 @@ facultySelect.addEventListener('change', async () => {
 });
 
 async function loadProfile() {
+  const account = window.fyeAuth ? await window.fyeAuth.ready : null;
+  if (window.fyeAuth && !account) return;
   if (!fyeClient) {
     feedback.textContent =
       'Supabase did not load. Check supabase-config.js and refresh.';
@@ -387,7 +471,7 @@ async function loadProfile() {
   const { data: profile, error: profileError } = await fyeClient
     .from('profiles')
     .select(
-      'full_name, role, mentor_approval_status, is_active, faculty_id, programme_id, bio, avatar_path, whatsapp_group_link'
+      'full_name, first_name, last_name, school, role, mentor_approval_status, is_active, faculty_id, programme_id, bio, avatar_path, whatsapp_group_link'
     )
     .eq('id', currentUser.id)
     .single();
@@ -405,34 +489,18 @@ async function loadProfile() {
     return;
   }
 
-  let approved = profile.role === 'mentor'
-    && profile.mentor_approval_status === 'approved';
-
-  if (!approved) {
-    const { data: application, error: applicationError } = await fyeClient
-      .from('mentor_applications')
-      .select('status')
-      .eq('applicant_id', currentUser.id)
-      .maybeSingle();
-
-    if (applicationError) {
-      console.error('Could not verify mentor approval:', applicationError);
-      feedback.textContent = 'Could not verify mentor approval. Please return to the student dashboard and try again.';
-      return;
-    }
-    approved = application?.status === 'approved';
-  }
-
-  if (!approved) {
-    feedback.textContent = 'Mentor access requires an approved application. Returning to your student dashboard…';
-    window.location.replace('student.html');
-    return;
-  }
+  let approved;
+  try { approved = account ? account.role === 'mentor' : await window.fyeAcademic.mentor(currentUser.id); }
+  catch (error) { feedback.textContent = 'Could not verify the mentor appointment: '+error.message; return; }
+  if (!approved) { window.location.replace('student.html'); return; }
 
   currentProfile = profile;
   updateMentorName(profile.full_name);
 
-  document.querySelector('#profile-name').value = profile.full_name || '';
+  const nameParts = (profile.full_name || '').trim().split(/\s+/);
+  firstNameInput.value = profile.first_name || nameParts.shift() || '';
+  lastNameInput.value = profile.last_name || nameParts.join(' ');
+  schoolInput.value = profile.school || '';
   document.querySelector('#profile-intro').value = profile.bio || '';
   document.querySelector('#whatsapp-link').value =
     profile.whatsapp_group_link || '';
@@ -455,6 +523,7 @@ async function loadProfile() {
   }
 
   await loadAssignedStudents();
+  await loadNextCalendarEvent();
 }
 
 photoInput.addEventListener('change', () => {
@@ -482,7 +551,10 @@ profileForm.addEventListener('submit', async (event) => {
     return;
   }
 
-  const name = document.querySelector('#profile-name').value.trim();
+  const firstName = firstNameInput.value.trim();
+  const lastName = lastNameInput.value.trim();
+  const name = `${firstName} ${lastName}`.trim();
+  const school = schoolInput.value.trim();
   const facultyId = facultySelect.value;
   const programmeId = programmeSelect.value;
   const intro = document.querySelector('#profile-intro').value.trim();
@@ -490,8 +562,8 @@ profileForm.addEventListener('submit', async (event) => {
   const file = photoInput.files[0];
   const saveButton = profileForm.querySelector('button[type="submit"]');
 
-  if (!facultyId || !programmeId) {
-    feedback.textContent = 'Please choose both your faculty and programme.';
+  if (!firstName || !lastName || !school || !facultyId || !programmeId) {
+    feedback.textContent = 'Enter your first name, surname, school, faculty, and programme.';
     return;
   }
 
@@ -532,6 +604,9 @@ profileForm.addEventListener('submit', async (event) => {
       .from('profiles')
       .update({
         full_name: name,
+        first_name: firstName,
+        last_name: lastName,
+        school,
         faculty_id: Number(facultyId),
         programme_id: Number(programmeId),
         bio: intro || null,
@@ -539,7 +614,7 @@ profileForm.addEventListener('submit', async (event) => {
         whatsapp_group_link: whatsappLink || null
       })
       .eq('id', currentUser.id)
-      .select('full_name, faculty_id, programme_id')
+      .select('full_name, first_name, last_name, school, faculty_id, programme_id')
       .single();
 
     if (saveError) {
@@ -550,6 +625,9 @@ profileForm.addEventListener('submit', async (event) => {
     currentProfile = {
       ...currentProfile,
       full_name: name,
+      first_name: firstName,
+      last_name: lastName,
+      school,
       faculty_id: Number(facultyId),
       programme_id: Number(programmeId),
       bio: intro,
