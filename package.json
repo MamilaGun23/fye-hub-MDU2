@@ -1,11 +1,21 @@
 {
   "name": "fye-hub",
   "version": "1.0.0",
-  "description": "First Year Experience Hub",
+  "description": "A role-based student support platform connecting first-year students, mentors, supervisors and administrators.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MamilaGun23/fye-hub-MDU2.git"
+  },
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "node --test",
+    "start": "node --env-file-if-exists=.env server.js",
+    "test:portfolio": "playwright test",
+    "screenshots": "node scripts/capture-portfolio.cjs",
+    "test": "node --test --test-concurrency=2",
     "demo:audit": "node scripts/demo/cli.cjs audit",
     "demo:preview": "node scripts/demo/cli.cjs preview",
     "demo:check": "node scripts/demo/cli.cjs check",
@@ -21,6 +31,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.10",
+    "@playwright/test": "^1.65.0",
     "jsdom": "^30.1.3"
   }
 }

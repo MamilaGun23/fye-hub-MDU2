@@ -90,6 +90,8 @@
 
   async function start() {
     if (!landing && !dashboardRole) return null;
+    // The public landing page stays available before a database is configured.
+    if (landing && !db) return null;
     let loading;
     if (dashboardRole) {
       loading = document.createElement('p'); loading.className = 'auth-status';
