@@ -55,4 +55,6 @@ npm run screenshots
 
 The browser checks start a local server on port 3100 with blank Supabase configuration. They use Edge on Windows and Playwright Chromium elsewhere. `PLAYWRIGHT_CHANNEL` can select another installed channel; `chromium` selects Playwright's bundled browser.
 
-Screenshots use the same page, local fixture content, and browser configuration. Outputs are written to `docs/assets/`. The capture script starts and stops its own local server.
+`npm run screenshots` captures the actual application with the configured Supabase client and writes images to `docs/screenshots/`. Optional test-account logins in the ignored `.env.screenshots` enable dashboard captures through the real sign-in form. See [the screenshot guide](SCREENSHOTS.md). The capture script starts and stops its own local server.
+
+`npm run screenshots:portfolio` captures the independent explanatory presentation and writes its images to `docs/assets/`.

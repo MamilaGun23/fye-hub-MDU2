@@ -24,32 +24,41 @@ Starting university involves more than attending classes. Students need people t
 
 ## Explore the project
 
-![Portfolio walkthrough showing the role journeys and project leadership story](docs/assets/portfolio-desktop.jpg)
+![Actual FYE Hub application running locally: desktop welcome page](docs/screenshots/home-desktop.jpg)
 
-The portfolio walkthrough is a separate, interactive case study with four selectable role journeys. It uses illustrative content, requires no account, and makes no Supabase requests. It explains the product rather than simulating a signed-in production session.
+These are direct browser screenshots of the running application, signed in with the project's existing demo accounts. They show actual pages and populated prototype data. Account totals in these screenshots describe the prototype database, not measured adoption. [View all desktop, mobile, and feature screenshots](docs/SCREENSHOTS.md).
+
+| Student dashboard | Mentor dashboard |
+| --- | --- |
+| ![Actual signed-in student dashboard](docs/screenshots/student-dashboard.jpg) | ![Actual signed-in mentor dashboard](docs/screenshots/mentor-dashboard.jpg) |
+
+| Supervisor dashboard | Admin dashboard |
+| --- | --- |
+| ![Actual signed-in supervisor dashboard](docs/screenshots/supervisor-dashboard.jpg) | ![Actual signed-in admin dashboard](docs/screenshots/admin-dashboard.jpg) |
 
 ```sh
 npm ci
 npm start
 ```
 
-Open **http://localhost:3000/portfolio.html**. Requires Node.js 22 or newer. No database configuration is needed for this page.
-
-The application itself starts at **http://localhost:3000**. Live sign-in and dashboard actions require an existing compatible Supabase database; see the [setup guide](docs/SETUP.md). This repository does **not** yet include a complete base schema for an empty database.
+Open the application at **http://localhost:3000**. Requires Node.js 22 or newer. Live sign-in and dashboard actions require a configured compatible Supabase database; see the [setup guide](docs/SETUP.md). This repository does **not** yet include a complete base schema for an empty database.
 
 <details>
-<summary>Mobile presentation</summary>
+<summary>Actual application on mobile</summary>
 
-<img src="docs/assets/portfolio-mobile.jpg" alt="Mobile version of the FYE Hub portfolio walkthrough" width="340">
+<img src="docs/screenshots/home-mobile.jpg" alt="Actual FYE Hub welcome screen on mobile" width="340">
+<img src="docs/screenshots/sign-in-mobile.jpg" alt="Actual FYE Hub sign-in dialog on mobile" width="340">
+<img src="docs/screenshots/student-mobile.jpg" alt="Actual signed-in student dashboard on mobile" width="340">
+<img src="docs/screenshots/mentor-mobile.jpg" alt="Actual signed-in mentor dashboard on mobile" width="340">
+<img src="docs/screenshots/supervisor-mobile.jpg" alt="Actual signed-in supervisor dashboard on mobile" width="340">
+<img src="docs/screenshots/admin-mobile.jpg" alt="Actual signed-in admin dashboard on mobile" width="340">
 
 </details>
 
 <details>
-<summary>Application entry screen</summary>
+<summary>Additional portfolio case study</summary>
 
-![Actual application welcome and shared sign-in entry point, captured without a backend connection](docs/assets/application-landing.jpg)
-
-This is the application's entry screen. Authenticated dashboards require a configured database and authorised test accounts.
+The separate presentation at **http://localhost:3000/portfolio.html** explains four role journeys and the project leadership story. It requires no account and uses illustrative content. Application screenshots above come from the application itself.
 
 </details>
 
@@ -91,7 +100,8 @@ See the [case study](docs/CASE_STUDY.md) for the problem, contribution, tradeoff
 npm test                 # Existing regression suite plus runtime-config checks
 npx playwright install chromium
 npm run test:portfolio   # Desktop/mobile walkthrough and unconfigured sign-in
-npm run screenshots     # Recreate the checked-in presentation screenshots
+npm run screenshots     # Capture the running application's real screens
+npm run screenshots:portfolio # Capture the separate explanatory presentation
 ```
 
 On Windows, the browser checks use installed Microsoft Edge; Chromium is used elsewhere. Override with `PLAYWRIGHT_CHANNEL=chrome` or `PLAYWRIGHT_CHANNEL=chromium` as appropriate. [Verification details and limits](docs/VERIFICATION.md).

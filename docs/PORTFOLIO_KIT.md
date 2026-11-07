@@ -11,7 +11,7 @@ Led the design and development of a role-based platform connecting first-year st
 
 **Links:** [Source](https://github.com/MamilaGun23/fye-hub-MDU2) · [Case study](CASE_STUDY.md). Use a deployed portfolio URL for the interactive walkthrough only after it has been hosted and checked; no live URL is claimed here.
 
-**Cover image:** `docs/assets/portfolio-banner.svg` or `docs/assets/portfolio-desktop.jpg`.
+**Cover image:** `docs/screenshots/home-desktop.jpg` shows the actual application. `docs/assets/portfolio-banner.svg` is the optional branded project banner.
 
 ## CV bullets
 

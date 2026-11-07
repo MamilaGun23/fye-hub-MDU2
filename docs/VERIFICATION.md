@@ -42,6 +42,16 @@ Windows checks default to installed Edge; other systems use Playwright Chromium.
 
 ## Limits
 
-The regression suite includes isolated database-contract and mocked DOM checks. It does not certify the state of a deployed Supabase project. Live sign-in, real role credentials, deployed RLS/storage policies, actual email delivery, and migration installation were not tested in this portfolio pass. No user adoption or educational impact measurements are claimed.
+The regression suite includes isolated database-contract and mocked DOM checks. It does not certify the state of a deployed Supabase project. The subsequent application screenshot pass below checked live demo sign-ins and selected rendered pages; comprehensive deployed RLS/storage-policy checks, actual email delivery, and migration installation remain outside this validation. No user adoption or educational impact measurements are claimed.
 
 The six browser checks cover the new portfolio and unconfigured landing flow, not every authenticated dashboard or a full accessibility audit. A fresh database still requires a reviewed base schema that is not included in this repository. Dependency audit results describe this check, not a permanent guarantee.
+
+## Actual application screenshot pass
+
+The application was started locally and connected to its original Supabase project. Existing credentials from the private presentation-login CSV were used through the real sign-in form for student, mentor, supervisor, and admin accounts. All four reached their role-specific authenticated dashboards with rendered data.
+
+The capture set includes four desktop dashboards, four mobile dashboards, the student's mentor view, mentor student list, supervisor assignments, admin analytics, and five public welcome/sign-in/help images. The images were visually reviewed. No accounts were created, passwords reset, migrations installed, or demo cohorts seeded for this capture.
+
+The capture uses actual DOM readiness checks, including rendered counts and profile labels, because background polling prevents reliable network-idle waits on some staff pages. The reusable capture script reads private configuration, writes only reviewed images to `docs/screenshots/`, and keeps failure diagnostics in ignored `.demo-seed/`.
+
+See the [actual application screenshot gallery](SCREENSHOTS.md). The separate portfolio walkthrough remains an explanatory artifact and is no longer used as the README's application screenshot.

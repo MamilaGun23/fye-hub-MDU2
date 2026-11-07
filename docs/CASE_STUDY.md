@@ -5,7 +5,7 @@
 **Stack:** HTML, CSS, JavaScript, Node.js, Express, Supabase, PostgreSQL<br>
 **Repository:** [MamilaGun23/fye-hub-MDU2](https://github.com/MamilaGun23/fye-hub-MDU2)
 
-![FYE Hub project presentation](assets/portfolio-desktop.jpg)
+![Actual FYE Hub application welcome screen](screenshots/home-desktop.jpg)
 
 ## The problem
 
