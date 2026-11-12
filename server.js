@@ -23,9 +23,6 @@ if (require.main === module) {
   const port = process.env.PORT || 3000;
   createApp().listen(port, () => {
     console.log(`FYE Hub is running at http://localhost:${port}`);
-    console.log(
-      `Portfolio walkthrough: http://localhost:${port}/portfolio.html`,
-    );
   });
 }
 

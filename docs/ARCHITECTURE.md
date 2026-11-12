@@ -1,81 +1,36 @@
-# Architecture and workflow boundaries
+# Architecture
 
-![FYE Hub architecture showing browser workspaces, Express, and Supabase services](assets/architecture.svg)
+![FYE Hub system architecture](assets/architecture.svg)
 
-## Runtime
+Express serves the frontend and public runtime configuration. Browser modules connect directly to Supabase Auth, PostgreSQL, and Storage. Database functions and row-level policies enforce access to application data.
 
-Express serves `public/` and an allowlisted `/runtime-config.js` response. Browser scripts connect directly to Supabase for authentication, PostgreSQL queries/RPCs, and file storage. Express is not a proxy for business operations and does not enforce database permissions.
+## Main modules
 
-The portfolio page is independent: `portfolio.html`, `portfolio.css`, `portfolio.js`, and a small SVG mark. Role switching changes local explanatory content only.
-
-```mermaid
-flowchart TB
-    subgraph Browser
-      L[Shared sign-in]
-      R[Account and academic role resolution]
-      D[Student / Mentor / Supervisor / Admin]
-      P[Independent portfolio walkthrough]
-      L --> R --> D
-    end
-    E[Express static server] --> Browser
-    C[Public runtime config: URL + publishable key] --> L
-    E --> C
-    D --> A[Supabase Auth]
-    D --> DB[PostgreSQL: queries + RPCs + RLS]
-    D --> S[Supabase Storage]
-```
-
-## Module map
-
-| Concern | Main files |
+| Concern | Entry points in `public/` |
 | --- | --- |
-| Authentication and routing | `auth.js`, `script.js`, `supabase-config.js` |
-| Academic and appointment state | `academic.js`, `academic-details.js`, `academic-supervisor.js` |
-| Student and mentor workspaces | `student.js`, `mentor.js`, `directory.js`, `mentor-application.js` |
-| Assignments and approvals | `supervisor.js`, `supervisor-approvals.js` |
-| Event lifecycle and attendance | `calendar.js`, `event-workflow.js`, `event-attendance.js`, `manual-attendance.js` |
-| Communication | `messages.js`, `notices.js`, `notifications.js`, `supervisor-notifications.js` |
-| Administration | `admin.js`, `admin-academic.js`, `admin-notices.js` |
-| Common presentation | `dashboard-ui.js`, `dashboard-counts.js`, `ui-theme.css`, page styles |
+| Authentication and academic status | `auth.js`, `academic.js` |
+| Role workspaces | `student.js`, `mentor.js`, `supervisor.js`, `admin.js` |
+| Applications and assignments | `mentor-application.js`, `supervisor-approvals.js`, `academic-supervisor.js` |
+| Events and attendance | `calendar.js`, `event-workflow.js`, `event-attendance.js`, `manual-attendance.js` |
+| Communication | `messages.js`, `notices.js`, `notifications.js` |
+| Administration | `admin-academic.js`, `admin-notices.js`, `admin-details.js` |
 
-Browser modules use shared globals such as `window.fyeSupabase` and `window.fyeAuth`; dependency order in the HTML matters. Runtime configuration must load before Supabase client creation, followed by shared authentication/academic modules and page scripts.
+Shared modules use browser globals, so HTML script order matters: runtime configuration, Supabase client, shared authentication/academic modules, then workspace scripts. Messages and notifications currently use polling.
 
-## Representative workflows
+## Event workflow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> EventRequest: Mentor submits
-    EventRequest --> Rejected: Supervisor declines
-    EventRequest --> Scheduled: Supervisor approves and publishes
-    Scheduled --> Cancelled: Supervisor cancels
-    Scheduled --> Completed: Supervisor completes
-    Completed --> OutcomeRecorded: Mentor submits outcome
+flowchart LR
+    Request[Mentor request] --> Review[Supervisor review]
+    Review --> Approved[Published event]
+    Review --> Rejected
+    Approved --> Attendance[QR or manual attendance]
+    Attendance --> Completed[Completion and outcome]
+    Approved --> Cancelled
 ```
 
-This is a simplified product diagram, not a literal enum map. Detailed constraints, timestamps, attendance eligibility, and audit behavior live in the SQL and event modules.
+## Access controls
 
-```mermaid
-sequenceDiagram
-    participant Student
-    participant Browser
-    participant Auth as Supabase Auth
-    participant DB as PostgreSQL
-    Student->>Browser: Open attendance link and submit
-    Browser->>Auth: Resolve signed-in user
-    Browser->>DB: mark_event_attendance(token)
-    DB->>DB: Apply eligibility and event rules
-    DB-->>Browser: Success or error
-    Browser-->>Student: Confirmation or actionable feedback
-```
+The server exposes only the Supabase URL and publishable key through `/runtime-config.js`. Role-aware navigation organises the interface; SQL functions, row-level security, and storage policies remain the authority for permissions. Administrative service keys are restricted to local demo-management tools.
 
-## Access and data handling
-
-- The publishable key is public browser configuration. Service-role credentials are not exposed by the server endpoint and belong only in separate administrative tooling.
-- Interface hiding and role redirects are not security boundaries. Authenticated SQL functions, row-level security, and storage policies must reject unauthorised operations.
-- Mentor-student communication is tied to assignment workflows; application evidence and mentor photos use storage buckets with separate access requirements.
-- Messages and notifications poll. No realtime transport is implied by the portfolio presentation.
-- The complete base database schema is missing. Checked-in updates cannot independently establish that a deployed project's policies and schema are correct.
-
-## Tradeoffs and next steps
-
-The small stack makes source review approachable, but global browser modules create load-order coupling. A reproducible schema baseline, deployment-state validation, stronger module boundaries, accessibility review, and Unicode-safe exports are useful next improvements. See [verification](VERIFICATION.md) for what has actually been checked.
+Tests combine DOM fixtures, isolated PostgreSQL contract checks, and browser smoke checks. Live policy validation and a reproducible base schema remain areas for further work.

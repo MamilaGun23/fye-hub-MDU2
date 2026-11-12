@@ -30,7 +30,7 @@ test("runtime config exposes only public values and never caches them", async (t
   );
   assert.equal(Object.keys(context.window.FYE_CONFIG).length, 2);
   assert.equal((await fetch(`${base}/.env`)).status, 404);
-  assert.equal((await fetch(`${base}/portfolio.html`)).status, 200);
+  assert.equal((await fetch(`${base}/`)).status, 200);
 });
 
 test("no configuration produces valid blank browser configuration", async (t) => {

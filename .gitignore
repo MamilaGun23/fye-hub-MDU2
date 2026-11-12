@@ -10,3 +10,7 @@ coverage/
 *.log
 .DS_Store
 Thumbs.db
+
+# Local planning and handoff notes
+TASK_STATUS.md
+DEMO_DATA_PLAN.md

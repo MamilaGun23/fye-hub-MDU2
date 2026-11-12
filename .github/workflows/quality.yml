@@ -1,7 +1,7 @@
 name: Project checks
 on:
   push:
-    branches: [main, 'portfolio/**']
+    branches: [main]
   pull_request:
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-  portfolio:
+  browser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,4 +26,4 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:portfolio
+      - run: npm run test:e2e

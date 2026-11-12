@@ -13,9 +13,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node --env-file-if-exists=.env server.js",
-    "test:portfolio": "playwright test",
+    "test:e2e": "playwright test",
     "screenshots": "node scripts/capture-application.cjs",
-    "screenshots:portfolio": "node scripts/capture-portfolio.cjs",
     "test": "node --test --test-concurrency=2",
     "demo:audit": "node scripts/demo/cli.cjs audit",
     "demo:preview": "node scripts/demo/cli.cjs preview",
